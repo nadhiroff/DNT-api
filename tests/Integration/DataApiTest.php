@@ -142,6 +142,47 @@ final class DataApiTest extends WebTestCase
         self::assertCount(2, self::json($this->api('GET', '/data/categories')));
     }
 
+    public function testBulkDeleteApiConsoleSelectionAndEmptyTable(): void
+    {
+        $this->createProductsTable();
+        $names = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot'];
+        $rows = self::json($this->api('POST', '/data/produits', array_map(static fn (string $n): array => ['nom' => $n, 'prix' => 10], $names)));
+        $ids = array_column($rows, 'id');
+
+        // Page des tables : nombre exact et aperçu des dernières lignes enregistrées.
+        $overview = $this->send('GET', '/projects/' . $this->ref . '/tables')->body();
+        self::assertStringContainsString('6 lignes', $overview);
+        self::assertStringContainsString('Dernières lignes enregistrées', $overview);
+        self::assertStringContainsString('Foxtrot', $overview);
+        $grid = $this->send('GET', '/projects/' . $this->ref . '/tables/produits')->body();
+        self::assertStringContainsString('enregistrée(s) dans MySQL', $grid);
+        self::assertStringContainsString('nouvelle', $grid);
+
+        // API : un filtre est obligatoire, puis suppression groupée en une requête.
+        self::assertSame(400, $this->api('DELETE', '/data/produits')->status());
+        self::assertSame(403, $this->api('DELETE', '/data/produits?id=gt.0', null, $this->pk)->status());
+        $bulk = $this->api('DELETE', '/data/produits?id=in.(' . $ids[0] . ',' . $ids[1] . ')');
+        self::assertSame(200, $bulk->status(), $bulk->body());
+        self::assertSame(['deleted' => 2], self::json($bulk));
+        self::assertSame(['deleted' => 0], self::json($this->api('DELETE', '/data/produits?nom=eq.Inconnu')));
+
+        // Console : suppression des lignes cochées, puis « Vider la table ».
+        $selected = $this->send('POST', '/projects/' . $this->ref . '/tables/produits/rows/delete', ['ids' => [(string) $ids[2], (string) $ids[3]]]);
+        self::assertSame(303, $selected->status());
+        self::assertSame(['Echo', 'Foxtrot'], array_column(self::json($this->api('GET', '/data/produits?order=id.asc')), 'nom'));
+        $this->send('POST', '/projects/' . $this->ref . '/tables/produits/truncate');
+        self::assertSame([], self::json($this->api('GET', '/data/produits')));
+        self::assertStringContainsString('Aucune donnée pour l', $this->send('GET', '/projects/' . $this->ref . '/tables')->body());
+
+        // Vider une table référencée par une relation RESTRICT est refusé proprement.
+        $this->api('POST', '/data/produits', ['nom' => 'Lié', 'prix' => 1]);
+        $this->send('POST', '/projects/' . $this->ref . '/tables', ['name' => 'commandes', 'columns' => [['name' => 'produit_id', 'type' => 'foreign', 'fk_table' => 'produits', 'fk_on_delete' => 'RESTRICT']]]);
+        $linked = self::json($this->api('GET', '/data/produits'))[0]['id'];
+        $this->api('POST', '/data/commandes', ['produit_id' => $linked]);
+        $this->send('POST', '/projects/' . $this->ref . '/tables/produits/truncate');
+        self::assertCount(1, self::json($this->api('GET', '/data/produits')));
+    }
+
     public function testTableEditorValidatesIdentifiers(): void
     {
         foreach (['select', '1abc', 'nb_secret', 'a;drop', 'x`y', 'é_table'] as $bad) {
@@ -234,6 +275,49 @@ final class DataApiTest extends WebTestCase
         self::assertStringContainsString('Une valeur unique existe déjà', $this->send('GET', $base . '/rows/new')->body());
         $this->send('POST', $base . '/rows', ['f_nom' => 'Autre', 'f_prix' => 'pas un prix']);
         self::assertStringContainsString('aria-invalid="true"', $this->send('GET', $base . '/rows/new')->body());
+
+        // Grille : recherche sans bouton, menu « Insérer », fenêtre d'insertion (rouverte si demandé ou en cas d'erreur).
+        $grid = $this->send('GET', $base)->body();
+        self::assertStringContainsString('data-live-search', $grid);
+        self::assertStringNotContainsString('>Rechercher</button>', $grid);
+        self::assertStringContainsString('Insérer une ligne', $grid);
+        self::assertStringContainsString('Insérer des lignes depuis un CSV', $grid);
+        $again = $this->send('POST', $base . '/rows', ['f_nom' => 'Tamarin', 'f_prix' => '5', 'again' => '1']);
+        self::assertSame($base . '?insert=1', $again->header('location'));
+        self::assertStringContainsString('data-autoshow', $this->send('GET', $base . '?insert=1')->body());
+        $this->send('POST', $base . '/rows', ['f_nom' => 'Bissap', 'f_prix' => '1']);
+        $reopened = $this->send('GET', $base)->body();
+        self::assertStringContainsString('data-autoshow', $reopened);
+        self::assertStringContainsString('Une valeur unique existe déjà', $reopened);
+        // Saisie directe dans la ligne du tableau : enregistrée, puis la ligne de saisie reprend le focus.
+        self::assertStringContainsString('data-inline-row', $grid);
+        self::assertStringContainsString('form="inline-insert"', $grid);
+        $inline = $this->send('POST', $base . '/rows', ['f_nom' => 'Gingembre', 'f_prix' => '3', 'mode' => 'inline']);
+        self::assertSame($base . '?saisie=1', $inline->header('location'));
+        self::assertStringContainsString('data-inline-autofocus', $this->send('GET', $base . '?saisie=1')->body());
+        self::assertSame('Gingembre', self::json($this->api('GET', '/data/produits?nom=eq.Gingembre'))[0]['nom']);
+        // Pas de case vide : ligne vide refusée, texte obligatoire vide refusé, défaut appliqué si la case est vide.
+        $this->send('POST', $base . '/rows', ['f_nom' => '', 'f_prix' => '', 'f_stock' => '', 'f_details' => '', 'mode' => 'inline']);
+        self::assertStringContainsString('Ligne vide', $this->send('GET', $base)->body());
+        $this->send('POST', $base . '/rows', ['f_nom' => '   ', 'f_prix' => '4', 'mode' => 'inline']);
+        self::assertStringContainsString('Valeur obligatoire', $this->send('GET', $base)->body());
+        self::assertSame([], self::json($this->api('GET', '/data/produits?nom=eq.')));
+        $this->send('POST', $base . '/rows', ['f_nom' => 'Sans prix', 'f_prix' => '', 'mode' => 'inline']);
+        self::assertSame('0.00', self::json($this->api('GET', '/data/produits?nom=eq.Sans prix'))[0]['prix']);
+
+        // Colonnes système choisies dans la console : id, dates (vide = automatique).
+        $this->send('POST', $base . '/rows', ['f_nom' => 'Daté', 'f_prix' => '1', 'f_id' => '500', 'f_created_at' => '2025-01-15T09:30', 'f_updated_at' => '2025-02-01T10:00:00', 'mode' => 'inline']);
+        $dated = self::json($this->api('GET', '/data/produits/500'));
+        self::assertSame(['Daté', '2025-01-15 09:30:00', '2025-02-01 10:00:00'], [$dated['nom'], $dated['created_at'], $dated['updated_at']]);
+        $this->send('POST', $base . '/rows', ['f_nom' => 'Mauvaise date', 'f_prix' => '1', 'f_created_at' => 'hier']);
+        self::assertStringContainsString('Date et heure', $this->send('GET', $base)->body());
+        self::assertSame([], self::json($this->api('GET', '/data/produits?nom=eq.Mauvaise date')));
+        // L'API, elle, ignore toujours les colonnes système (assignation de masse).
+        self::assertNotSame(900, self::json($this->api('POST', '/data/produits', ['nom' => 'Via API', 'prix' => 1, 'id' => 900]))['id']);
+
+        $search = $this->send('GET', $base . '?q=Tama')->body();
+        self::assertStringContainsString('title="Tamarin"', $search);
+        self::assertStringNotContainsString('title="Bissap"', $search);
 
         // Relation : commandes.produit_id → produits.id (RESTRICT).
         $this->send('POST', '/projects/' . $this->ref . '/tables', ['name' => 'commandes', 'columns' => [['name' => 'produit_id', 'type' => 'foreign', 'fk_table' => 'produits', 'fk_on_delete' => 'RESTRICT'], ['name' => 'quantite', 'type' => 'integer', 'default_value' => '1']]]);

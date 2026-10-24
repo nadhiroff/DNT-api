@@ -52,6 +52,7 @@ return static function (Router $router): void {
         $api->get('/openapi.json', [ProjectApiController::class, 'openapi'], name: 'api.openapi');
         $api->get('/data/{table:[a-z][a-z0-9_]{0,62}}', [DataApiController::class, 'index']);
         $api->post('/data/{table:[a-z][a-z0-9_]{0,62}}', [DataApiController::class, 'store']);
+        $api->delete('/data/{table:[a-z][a-z0-9_]{0,62}}', [DataApiController::class, 'destroyMany']);
         $api->get('/data/{table:[a-z][a-z0-9_]{0,62}}/{id:[A-Za-z0-9\-]{1,36}}', [DataApiController::class, 'show']);
         $api->patch('/data/{table:[a-z][a-z0-9_]{0,62}}/{id:[A-Za-z0-9\-]{1,36}}', [DataApiController::class, 'update']);
         $api->put('/data/{table:[a-z][a-z0-9_]{0,62}}/{id:[A-Za-z0-9\-]{1,36}}', [DataApiController::class, 'update']);
@@ -155,6 +156,8 @@ return static function (Router $router): void {
                             $t->post('/rename', [TableController::class, 'rename']);
                             $t->post('/delete', [TableController::class, 'destroy']);
                             $t->post('/rules', [TableController::class, 'updateRules']);
+                            $t->post('/rows/delete', [TableController::class, 'deleteRows']);
+                            $t->post('/truncate', [TableController::class, 'truncate']);
                             $t->get('/rows/new', [TableController::class, 'newRow']);
                             $t->post('/rows', [TableController::class, 'storeRow']);
                             $t->get('/rows/{id:[A-Za-z0-9\\-]{1,36}}', [TableController::class, 'editRow']);

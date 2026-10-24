@@ -61,6 +61,11 @@ final class OpenApiGenerator
                     'requestBody' => ['required' => true, 'content' => ['application/json' => ['schema' => ['oneOf' => [$ref, ['type' => 'array', 'items' => $ref, 'maxItems' => 500]]]]]],
                     'responses' => ['201' => ['description' => 'Créé', 'content' => ['application/json' => ['schema' => $ref]]]] + $errors,
                 ],
+                'delete' => [
+                    'tags' => [$name],
+                    'summary' => 'Supprimer les lignes qui correspondent aux filtres (au moins un filtre, ex. id=in.(1,2) ou id=gt.0)',
+                    'responses' => ['200' => ['description' => 'Nombre de lignes supprimées', 'content' => ['application/json' => ['schema' => ['type' => 'object', 'properties' => ['deleted' => ['type' => 'integer']]]]]]] + $errors,
+                ],
             ];
             $paths['/data/' . $name . '/{id}'] = [
                 'parameters' => [$idParam],

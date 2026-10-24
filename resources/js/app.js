@@ -411,6 +411,131 @@
     bar.style.width = `${Math.max(0, Math.min(100, Number(bar.dataset.percent) || 0))}%`;
   });
 
+  /* ---------- Grille de données : sélection de lignes pour la suppression groupée ---------- */
+  // Rebranchée après chaque recherche instantanée (la grille est remplacée).
+  const bindSelection = () => {
+    const rowChecks = [...document.querySelectorAll('[data-row-check]')];
+    const selectAll = document.querySelector('[data-select-all]');
+    const sync = () => {
+      const selected = rowChecks.filter((box) => box.checked).length;
+      document.querySelectorAll('[data-selected-count]').forEach((el) => { el.textContent = String(selected); });
+      document.querySelectorAll('[data-bulk-button]').forEach((button) => { button.disabled = selected === 0; });
+      if (selectAll) {
+        selectAll.checked = selected > 0 && selected === rowChecks.length;
+        selectAll.indeterminate = selected > 0 && selected < rowChecks.length;
+      }
+    };
+    rowChecks.forEach((box) => box.addEventListener('change', sync));
+    selectAll?.addEventListener('change', () => {
+      rowChecks.forEach((box) => { box.checked = selectAll.checked; });
+      sync();
+    });
+    sync();
+  };
+  bindSelection();
+
+  /* ---------- Recherche instantanée : la grille se met à jour pendant la frappe ---------- */
+  document.querySelectorAll('form[data-live-search]').forEach((form) => {
+    const spinner = form.querySelector('[data-live-spinner]');
+    let timer = 0;
+    let controller = null;
+    const run = async () => {
+      const params = new URLSearchParams(new FormData(form));
+      [...params.keys()].forEach((key) => { if (params.get(key) === '') params.delete(key); });
+      const url = `${form.action.split('?')[0]}${params.toString() ? `?${params}` : ''}`;
+      controller?.abort();
+      controller = new AbortController();
+      spinner?.classList.remove('hidden');
+      try {
+        const response = await fetch(url, { signal: controller.signal, headers: { 'X-Requested-With': 'fetch' } });
+        const doc = new DOMParser().parseFromString(await response.text(), 'text/html');
+        document.querySelectorAll('[data-live-region]').forEach((region) => {
+          const next = doc.querySelector(`[data-live-region="${region.dataset.liveRegion}"]`);
+          if (next) region.replaceWith(next);
+        });
+        history.replaceState(null, '', url);
+        bindSelection();
+      } catch (error) {
+        if (error.name !== 'AbortError') form.submit();
+      } finally {
+        spinner?.classList.add('hidden');
+      }
+    };
+    form.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(run, 250);
+    });
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      clearTimeout(timer);
+      run();
+    });
+  });
+
+  /* ---------- Ligne de saisie du tableau : focus après une insertion ou depuis le menu ---------- */
+  const focusInline = () => {
+    const first = document.querySelector('[data-inline-row] input:not([type=checkbox]), [data-inline-row] select');
+    first?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    first?.focus({ preventScroll: true });
+  };
+  document.querySelector('[data-inline-autofocus]')?.focus();
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-focus-inline]')) {
+      event.target.closest('details')?.removeAttribute('open');
+      focusInline();
+    }
+  });
+
+  // Pas de case obligatoire vide ni de ligne entièrement vide.
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement) || form.id !== 'inline-insert') return;
+    const fields = [...form.elements].filter((el) => el.closest('[data-inline-row]'));
+    const values = fields.filter((el) => el.type !== 'checkbox');
+    const missing = values.filter((el) => el.hasAttribute('data-required') && el.value.trim() === '');
+    const empty = values.length > 0 && values.every((el) => el.value.trim() === '');
+    fields.forEach((el) => el.removeAttribute('aria-invalid'));
+    const errorRow = document.querySelector('[data-inline-error]');
+    if (!empty && missing.length === 0) {
+      if (errorRow) errorRow.hidden = true;
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    (empty ? values : missing).forEach((el) => el.setAttribute('aria-invalid', 'true'));
+    if (errorRow) {
+      errorRow.querySelector('[data-inline-error-text]').textContent = empty
+        ? 'Ligne vide : remplissez au moins une case avant d\'insérer.'
+        : `Case obligatoire vide : ${missing.map((el) => el.getAttribute('aria-label')).join(', ')}.`;
+      errorRow.hidden = false;
+    }
+    (missing[0] ?? values[0])?.focus();
+  }, true);
+
+  /* ---------- Menus déroulants (details) et fenêtres ouvertes par un bouton ---------- */
+  document.addEventListener('click', (event) => {
+    document.querySelectorAll('details[data-menu][open]').forEach((menu) => {
+      if (!menu.contains(event.target) || event.target.closest('[data-open-dialog], a, label')) menu.removeAttribute('open');
+    });
+    const opener = event.target.closest('[data-open-dialog]');
+    if (opener) {
+      const target = document.getElementById(opener.dataset.openDialog);
+      if (target instanceof HTMLDialogElement) {
+        target.showModal();
+        target.querySelector('input:not([type=hidden]):not([type=checkbox]), textarea, select')?.focus();
+      }
+    }
+    const closer = event.target.closest('[data-close-dialog]');
+    if (closer) closer.closest('dialog')?.close();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') document.querySelectorAll('details[data-menu][open]').forEach((menu) => menu.removeAttribute('open'));
+  });
+  document.querySelectorAll('dialog[data-autoshow]').forEach((target) => {
+    target.showModal();
+    (target.querySelector('[aria-invalid="true"]') ?? target.querySelector('input:not([type=hidden]):not([type=checkbox]), textarea, select'))?.focus();
+  });
+
   /* ---------- Éditeur SQL : modèles, Ctrl+Entrée, tabulation ---------- */
   const sqlEditor = document.querySelector('[data-sql-editor]');
   if (sqlEditor) {

@@ -27,6 +27,9 @@ final class ProjectDataService
 
     public const int MAX_INSERT = 500;
 
+    /** Paramètres de pagination et de forme : jamais des filtres. */
+    public const array PAGING_PARAMS = ['select', 'order', 'limit', 'offset'];
+
     private const array OPERATORS = ['eq' => '=', 'neq' => '<>', 'gt' => '>', 'gte' => '>=', 'lt' => '<', 'lte' => '<='];
 
     /** @var array<string, Database> */
@@ -110,10 +113,12 @@ final class ProjectDataService
      * @param ProjectRow                       $project
      * @param TableDef                         $table
      * @param list<array<string, mixed>>       $rows
+     * @param array<string, mixed>             $system valeurs choisies pour les colonnes système (console
+     *                                                 uniquement, validées par systemValues() ; jamais depuis l'API)
      *
      * @return list<array<string, mixed>>
      */
-    public function insert(array $project, array $table, array $rows, ?int $ownerId = null): array
+    public function insert(array $project, array $table, array $rows, ?int $ownerId = null, array $system = []): array
     {
         if ($rows === [] || count($rows) > self::MAX_INSERT) {
             throw new HttpException(400, 'bad_request', 'Entre 1 et ' . self::MAX_INSERT . ' lignes par insertion.');
@@ -121,11 +126,11 @@ final class ProjectDataService
         $columns = self::columns($table);
         $db = $this->db($project);
 
-        return $db->transaction(function (Database $db) use ($project, $table, $rows, $columns, $ownerId): array {
+        return $db->transaction(function (Database $db) use ($project, $table, $rows, $columns, $ownerId, $system): array {
             $created = [];
             foreach ($rows as $index => $row) {
-                $values = $this->writable($columns, $row, false, count($rows) > 1 ? $index : null);
-                if ($table['pk_type'] === 'uuid') {
+                $values = [...$this->writable($columns, $row, false, count($rows) > 1 ? $index : null), ...$system];
+                if ($table['pk_type'] === 'uuid' && !isset($values['id'])) {
                     $values['id'] = self::uuid();
                 }
                 if ($ownerId !== null) {
@@ -140,6 +145,36 @@ final class ProjectDataService
 
             return $created;
         });
+    }
+
+    /**
+     * Valeurs saisies dans la console pour les colonnes système (id, owner_id, created_at,
+     * updated_at). Une valeur vide reste automatique. Retourne [valeurs, erreurs par colonne].
+     *
+     * @param TableDef             $table
+     * @param array<string, mixed> $raw
+     *
+     * @return array{0: array<string, mixed>, 1: array<string, string>}
+     */
+    public static function systemValues(array $table, array $raw): array
+    {
+        $columns = self::columns($table);
+        $values = [];
+        $errors = [];
+        foreach (ColumnTypes::SYSTEM_COLUMNS as $name) {
+            $value = $raw[$name] ?? null;
+            if (!is_string($value) || trim($value) === '') {
+                continue;
+            }
+            [$cast, $error] = ColumnTypes::cast(['type' => $columns[$name]['type'], 'length' => null, 'nullable' => false], trim($value));
+            if ($error !== null) {
+                $errors[$name] = $error;
+                continue;
+            }
+            $values[$name] = $cast;
+        }
+
+        return [$values, $errors];
     }
 
     /**
@@ -180,6 +215,24 @@ final class ProjectDataService
         $this->guard(fn (): int => $this->db($project)->execute('DELETE FROM ' . Identifier::quote($table['name']) . ' WHERE `id` = ?', [$existing['id']]));
 
         return true;
+    }
+
+    /**
+     * Suppression groupée des lignes qui correspondent aux filtres (mêmes opérateurs que la lecture).
+     * Sans filtre, toute la table est vidée : l'API exige au moins un filtre avant d'appeler.
+     *
+     * @param ProjectRow           $project
+     * @param TableDef             $table
+     * @param array<string, mixed> $query
+     *
+     * @return int nombre de lignes supprimées
+     */
+    public function deleteWhere(array $project, array $table, array $query, ?int $ownerId = null): int
+    {
+        [$where, $params] = $this->filters(self::columns($table), $query, $ownerId);
+        $sql = 'DELETE FROM ' . Identifier::quote($table['name']) . $where;
+
+        return $this->guard(fn (): int => $this->db($project)->execute($sql, $params));
     }
 
     /**
@@ -287,7 +340,7 @@ final class ProjectDataService
         $clauses = [];
         $params = [];
         foreach ($query as $name => $raw) {
-            if (in_array($name, ['select', 'order', 'limit', 'offset', 'q'], true) || !is_string($raw)) {
+            if (in_array($name, [...self::PAGING_PARAMS, 'q'], true) || !is_string($raw)) {
                 continue;
             }
             if (!isset($columns[$name])) {

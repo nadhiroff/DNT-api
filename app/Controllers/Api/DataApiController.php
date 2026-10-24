@@ -104,6 +104,23 @@ final class DataApiController
     }
 
     /**
+     * Suppression groupée : DELETE /data/{table}?<filtres>. Au moins un filtre est obligatoire
+     * (garde-fou contre un effacement accidentel) ; « id=gt.0 » supprime tout.
+     */
+    public function destroyMany(Request $request): Response
+    {
+        [$project, $table, $keyType] = $this->context($request);
+        $owner = AccessPolicy::check($table['access_rules'], 'delete', $keyType, null);
+        $filters = array_diff_key($request->allQuery(), array_flip(ProjectDataService::PAGING_PARAMS));
+        if ($filters === []) {
+            throw new HttpException(400, 'filter_required', 'Ajoutez au moins un filtre (par exemple ?id=in.(1,2,3) ou ?id=gt.0 pour tout supprimer).');
+        }
+        $deleted = $this->data->deleteWhere($project, $table, $filters, $owner);
+
+        return Response::json(['deleted' => $deleted]);
+    }
+
+    /**
      * @return array{0: ProjectRow, 1: TableDef, 2: string}
      */
     private function context(Request $request): array
