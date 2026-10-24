@@ -43,9 +43,12 @@ final class DatabaseManager
         return $this->admin ??= new Database(static fn (): \PDO => ConnectionFactory::make($config));
     }
 
+    /**
+     * Ferme les connexions ouvertes ; les objets Database restent utilisables (reconnexion paresseuse).
+     */
     public function disconnect(): void
     {
-        $this->platform = null;
-        $this->admin = null;
+        $this->platform?->disconnect();
+        $this->admin?->disconnect();
     }
 }

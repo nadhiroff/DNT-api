@@ -36,6 +36,13 @@ return [
     // Générée par : php install.php   ou   php bin/console key:generate
     'APP_KEY' => '',
 
+    // --- Pages légales (mentions légales, confidentialité, conditions) --------
+    'LEGAL_COMPANY' => 'NovaBase',
+    'LEGAL_ADDRESS' => '',
+    'LEGAL_EMAIL' => 'contact@novabase.example.com',
+    // Hébergeur du service (nom, adresse, téléphone).
+    'LEGAL_HOST' => '',
+
     // --- Journalisation ----------------------------------------------------------
     // debug | info | warning | error
     'LOG_LEVEL' => 'info',
@@ -95,12 +102,18 @@ return [
     'REDIS_PASSWORD' => '',
 
     // --- SMTP global (repli si un projet n'a pas son propre SMTP) ----------------
+    // smtp | log  (log = messages enregistrés dans storage/mail, visibles sur /_dev/mail en local)
+    'MAIL_DRIVER' => 'smtp',
+    // database (production : lancer « php bin/console worker ») | sync (développement uniquement)
+    'QUEUE_DRIVER' => 'database',
+    // Gmail : smtp.gmail.com, port 587, tls, votre adresse Gmail et un MOT DE PASSE D'APPLICATION
+    // (Compte Google → Sécurité → Validation en deux étapes → Mots de passe des applications).
     'MAIL_HOST' => '',
     'MAIL_PORT' => '587',
     // tls | ssl | none
     'MAIL_ENCRYPTION' => 'tls',
-    'MAIL_USERNAME' => '',
-    'MAIL_PASSWORD' => '',
-    'MAIL_FROM_ADDRESS' => 'no-reply@novabase.example.com',
+    'MAIL_USERNAME' => 'noreplynotifyuserconnect@gmail.com',
+    'MAIL_PASSWORD' => 'jmsfwforgxeyoekn',
+    'MAIL_FROM_ADDRESS' => 'noreplynotifyuserconnect@gmail.com',
     'MAIL_FROM_NAME' => 'NovaBase',
 ];

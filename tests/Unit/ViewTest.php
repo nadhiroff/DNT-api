@@ -67,7 +67,7 @@ final class ViewTest extends TestCase
      */
     public function testAllTemplateOutputsAreEscaped(): void
     {
-        $allowed = '/^<\?=\s*(e\(|\$this->(section|insert|csrfField|csrfToken|nonce|asset|url)\()/';
+        $allowed = '/^<\?=\s*(e\(|\$this->(section|insert|csrfField|csrfToken|nonce|asset|url|icon)\()/';
         $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(dirname(__DIR__, 2) . '/views', \FilesystemIterator::SKIP_DOTS));
         $count = 0;
         foreach ($iterator as $file) {

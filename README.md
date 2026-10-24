@@ -4,7 +4,7 @@ Backend auto-hébergé et gratuit, inspiré de Supabase, écrit en **PHP 8.3+ na
 avec **MySQL 8** : base de données isolée par projet, API REST instantanée, authentification des
 utilisateurs finaux, stockage de fichiers et service d'e-mails.
 
-> **État : phase 1 — socle.** Ce README est complété à chaque phase ; la version finale
+> **État : phases 1 (socle) et 2 (comptes) livrées, site public complet.** Ce README est complété à chaque phase ; la version finale
 > (worker, cron, Supervisor/systemd, sauvegardes, mises à jour) arrive en phase 11.
 
 ## Prérequis
@@ -88,6 +88,37 @@ comme racine (ou si l'application est dans un sous-dossier, ex. `http://localhos
 - **HTTPS** : `sudo certbot --nginx -d novabase.example.com` (Let's Encrypt), puis gardez
   `SESSION_SECURE_COOKIE=true` et `HSTS_MAX_AGE=31536000`.
 - Derrière un proxy/répartiteur : renseignez `TRUSTED_PROXIES` (sinon `X-Forwarded-*` est ignoré).
+
+### Comptes et e-mails
+
+Les visiteurs créent leur compte depuis **« Créer un compte »** (en-tête de la page d'accueil) :
+inscription → e-mail de confirmation (lien valable 1 h, usage unique) → connexion → console.
+Mot de passe oublié, double authentification (TOTP + 10 codes de secours), sessions actives
+révocables et suppression du compte sont dans **Mon compte**. Après 5 échecs de connexion, le compte
+et l'adresse IP sont bloqués progressivement (1 min, doublé à chaque échec, 1 h maximum).
+
+Les e-mails partent par une file d'attente MySQL. En production : `MAIL_DRIVER=smtp`,
+`QUEUE_DRIVER=database` et un worker permanent :
+
+```bash
+php bin/console worker            # à superviser par systemd ou Supervisor
+php bin/console worker --once     # variante cron : * * * * * php /chemin/bin/console worker --once
+```
+
+**Gmail** : `MAIL_HOST=smtp.gmail.com`, `MAIL_PORT=587`, `MAIL_ENCRYPTION=tls`, votre adresse dans
+`MAIL_USERNAME` et un **mot de passe d'application** Google dans `MAIL_PASSWORD` (les espaces affichés
+par Google sont ignorés). `MAIL_FROM_ADDRESS` vide = votre adresse Gmail. Vérification :
+
+```bash
+php bin/console mail:test vous@exemple.com
+```
+
+En développement, `QUEUE_DRIVER=sync` envoie l'e-mail tout de suite et affiche l'erreur SMTP à l'écran
+en cas d'échec ; `MAIL_DRIVER=log` enregistre les messages au lieu de les envoyer (lisibles sur
+`/_dev/mail`, page refusée hors `APP_ENV=local`).
+
+Le QR code de la 2FA est dessiné dans le navigateur par `qrcode-generator` (MIT, ~50 Ko, compilé
+dans `public/assets/js`) : aucun service externe ne voit le secret.
 
 Journaux : `storage/logs/app-AAAA-MM-JJ.log.php`, une ligne JSON par événement après une ligne de
 garde PHP (`tail -n +2 storage/logs/app-*.log.php`).

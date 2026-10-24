@@ -9,6 +9,7 @@ use App\Core\Database\DatabaseManager;
 use App\Core\Http\Pipeline;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
+use App\Core\Http\Responder;
 use App\Core\Http\Router;
 use App\Core\Http\UrlGenerator;
 use App\Core\Log\Logger;
@@ -22,7 +23,9 @@ use App\Core\View\View;
 use App\Middleware\HandleErrors;
 use App\Middleware\SecurityHeaders;
 use App\Repositories\HealthRepository;
+use App\Controllers\Web\DevMailController;
 use App\Services\Crypto;
+use App\Services\Mail\MailTransport;
 use App\Services\HealthService;
 use Closure;
 use Throwable;
@@ -191,11 +194,28 @@ final class Application
             $config->bool('app.debug'),
             $c->get(View::class),
             $c->get(Session::class),
+            $c->get(UrlGenerator::class),
+            static function (string $path) use ($c): bool {
+                try {
+                    $c->get(Router::class)->match('GET', $path);
+
+                    return true;
+                } catch (Http\HttpException) {
+                    return false;
+                }
+            },
         ));
         $c->singleton(HealthService::class, static fn (Container $c): HealthService => new HealthService(
             $c->get(HealthRepository::class),
             $base . '/storage',
         ));
+        $c->singleton(MailTransport::class, static fn (): MailTransport => new MailTransport($config, $base . '/storage/mail'));
+        $c->singleton(DevMailController::class, static fn (Container $c): DevMailController => new DevMailController(
+            $c->get(Responder::class),
+            $config,
+            $base . '/storage/mail',
+        ));
+        $c->instance(Container::class, $c);
         $c->singleton(Router::class, static function () use ($base): Router {
             $router = new Router();
             /** @var callable(Router): void $routes */

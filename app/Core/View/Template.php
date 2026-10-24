@@ -24,6 +24,9 @@ final class Template
     /** @var list<string> */
     private array $sectionStack = [];
 
+    /** @var array<string, true> sections définies par ce gabarit (et non héritées) */
+    private array $ownSections = [];
+
     /**
      * @param array<string, mixed>  $data
      * @param array<string, string> $sections sections héritées du gabarit enfant
@@ -44,7 +47,10 @@ final class Template
             return $content;
         }
         $sections = $this->sections;
-        $sections['content'] ??= $content;
+        // Le contenu transmis au parent est la sortie de ce niveau, sauf section « content » explicite.
+        if (!isset($this->ownSections['content'])) {
+            $sections['content'] = $content;
+        }
         $parent = new self($this->view, $this->layout, [...$this->data, ...$this->layoutData], $sections);
 
         return $parent->render();
@@ -70,6 +76,7 @@ final class Template
             throw new RuntimeException('stop() appelé sans start().');
         }
         $this->sections[$section] = (string) ob_get_clean();
+        $this->ownSections[$section] = true;
     }
 
     /**
@@ -108,6 +115,14 @@ final class Template
     public function csrfToken(): string
     {
         return e($this->view->csrfToken());
+    }
+
+    /**
+     * Icône SVG de la liste blanche App\Core\View\Icons.
+     */
+    public function icon(string $name, string $class = 'size-5'): string
+    {
+        return Icons::render($name, $class);
     }
 
     public function asset(string $path, bool $versioned = true): string

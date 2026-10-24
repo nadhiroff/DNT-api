@@ -144,6 +144,10 @@
       active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
 }
 
+@utility alert {
+  @apply flex items-start gap-3 rounded-lg border px-4 py-3 text-sm;
+}
+
 @layer components {
   .btn-primary {
     @apply btn bg-accent text-on-accent hover:bg-accent-hover;
@@ -159,6 +163,66 @@
   }
   .badge {
     @apply inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-xs font-medium text-muted;
+  }
+  .link {
+    @apply font-medium text-accent-text underline-offset-4 hover:underline;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-fg;
+  }
+  .input {
+    @apply block min-h-11 w-full rounded-lg border border-line-strong bg-bg px-3.5 py-2.5 text-[15px] text-fg
+      placeholder:text-muted/70 transition-[border-color,box-shadow] duration-150
+      focus:border-accent focus:ring-4 focus:ring-accent/15 focus:outline-none
+      aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-danger/15;
+  }
+  .field-error {
+    @apply mt-1.5 flex items-start gap-1.5 text-sm text-danger;
+  }
+  .field-hint {
+    @apply mt-1.5 text-xs text-muted;
+  }
+  .checkbox {
+    @apply mt-0.5 size-4 shrink-0 cursor-pointer rounded border-line-strong accent-[var(--nb-accent)];
+  }
+  .alert-success {
+    @apply alert border-accent/30 bg-accent-soft text-fg;
+  }
+  .alert-error {
+    @apply alert border-danger/30 bg-danger-soft text-fg;
+  }
+  .alert-info {
+    @apply alert border-line-strong bg-surface-2 text-fg;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:opacity-90 dark:text-[#1a0505];
+  }
+  .nav-link {
+    @apply rounded-md px-3 py-2 text-sm font-medium text-muted transition-colors duration-150 hover:text-fg;
+  }
+  .section-title {
+    @apply text-3xl font-semibold tracking-tight text-balance sm:text-4xl;
+  }
+  .eyebrow {
+    @apply font-mono text-xs font-medium tracking-widest text-accent-text uppercase;
+  }
+  .kbd-code {
+    @apply rounded-xl border border-line bg-[#0a0b0c] font-mono text-[13px] leading-relaxed text-[#d6d9dc];
+  }
+  .prose-legal {
+    @apply max-w-3xl text-[15px] leading-7 text-muted;
+  }
+  .prose-legal h2 {
+    @apply mt-10 mb-3 text-xl font-semibold text-fg;
+  }
+  .prose-legal p, .prose-legal ul {
+    @apply mt-3;
+  }
+  .prose-legal ul {
+    @apply list-disc pl-5;
+  }
+  .prose-legal strong {
+    @apply font-medium text-fg;
   }
   .bg-grid {
     background-image:
@@ -176,4 +240,208 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* =============================================================================
+ * Animations de la page d'accueil (CSS uniquement, compatibles CSP, désactivées
+ * par prefers-reduced-motion via la règle globale ci-dessus).
+ * ============================================================================= */
+
+/* Apparition au défilement : appliquée seulement si JavaScript est actif (classe .js). */
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s var(--ease-out-soft), transform 0.7s var(--ease-out-soft);
+}
+.js [data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+.js [data-reveal-delay="1"] { transition-delay: 80ms; }
+.js [data-reveal-delay="2"] { transition-delay: 160ms; }
+.js [data-reveal-delay="3"] { transition-delay: 240ms; }
+
+/* Défilements infinis (le contenu est dupliqué dans le gabarit). */
+@keyframes nb-marquee-x { to { transform: translateX(-50%); } }
+@keyframes nb-marquee-y { to { transform: translateY(-50%); } }
+.marquee-x { animation: nb-marquee-x 40s linear infinite; }
+.marquee-y { animation: nb-marquee-y 18s linear infinite; }
+.marquee-y-reverse { animation: nb-marquee-y 22s linear infinite reverse; }
+.marquee-pause:hover .marquee-x { animation-play-state: paused; }
+.mask-fade-x { mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); }
+.mask-fade-y { mask-image: linear-gradient(to bottom, transparent, #000 25%, #000 75%, transparent); }
+
+/* Lignes de données qui « circulent » (SVG). */
+@keyframes nb-dash { to { stroke-dashoffset: -40; } }
+.flow-line { stroke-dasharray: 4 6; animation: nb-dash 1.6s linear infinite; }
+
+/* Grille de fichiers (Storage) : surbrillance en vague. */
+@keyframes nb-cell {
+  0%, 70%, 100% { border-color: var(--nb-border); color: var(--nb-muted); background: transparent; }
+  20%, 40% { border-color: rgb(62 207 142 / 0.6); color: var(--nb-accent-text); background: var(--nb-accent-soft); }
+}
+.storage-cell { animation: nb-cell 6s ease-in-out infinite; }
+.storage-cell:nth-child(1) { animation-delay: 0s; }
+.storage-cell:nth-child(2) { animation-delay: 0.4s; }
+.storage-cell:nth-child(3) { animation-delay: 0.8s; }
+.storage-cell:nth-child(4) { animation-delay: 1.2s; }
+.storage-cell:nth-child(5) { animation-delay: 1.6s; }
+.storage-cell:nth-child(6) { animation-delay: 2s; }
+.storage-cell:nth-child(7) { animation-delay: 2.4s; }
+.storage-cell:nth-child(8) { animation-delay: 2.8s; }
+.storage-cell:nth-child(9) { animation-delay: 3.2s; }
+
+/* Notifications d'e-mails qui se succèdent. */
+@keyframes nb-toast {
+  0% { opacity: 0; transform: translateY(14px) scale(0.97); }
+  8%, 30% { opacity: 1; transform: none; }
+  38%, 100% { opacity: 0; transform: translateY(-14px) scale(0.97); }
+}
+.mail-toast { animation: nb-toast 9s var(--ease-out-soft) infinite; opacity: 0; }
+.mail-toast:nth-child(2) { animation-delay: 3s; }
+.mail-toast:nth-child(3) { animation-delay: 6s; }
+
+/* Saisie de texte avec curseur clignotant. */
+@keyframes nb-type { from { width: 0; } }
+@keyframes nb-caret { 50% { border-color: transparent; } }
+.type-in {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  border-right: 2px solid var(--nb-accent);
+  animation: nb-type 2.4s steps(24) 0.4s both, nb-caret 0.9s step-end infinite;
+}
+
+/* Bouclier (sécurité) : anneaux qui pulsent. */
+@keyframes nb-ring {
+  0% { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.shield-ring { animation: nb-ring 3s ease-out infinite; }
+.shield-ring:nth-child(2) { animation-delay: 1s; }
+.shield-ring:nth-child(3) { animation-delay: 2s; }
+
+/* Journal qui défile (terminal). */
+@keyframes nb-log-line {
+  0% { opacity: 0; transform: translateX(-6px); }
+  6%, 100% { opacity: 1; transform: none; }
+}
+.log-line { opacity: 0; animation: nb-log-line 12s linear infinite; }
+.log-line:nth-child(1) { animation-delay: 0s; }
+.log-line:nth-child(2) { animation-delay: 1.2s; }
+.log-line:nth-child(3) { animation-delay: 2.4s; }
+.log-line:nth-child(4) { animation-delay: 3.6s; }
+.log-line:nth-child(5) { animation-delay: 4.8s; }
+.log-line:nth-child(6) { animation-delay: 6s; }
+.log-line:nth-child(7) { animation-delay: 7.2s; }
+
+/* -----------------------------------------------------------------------------
+ * Démo « vidéo » du Table Editor : boucle de 10 s.
+ * Curseur → « Ajouter une colonne » → saisie « price » → type decimal → Enregistrer → notification.
+ * ----------------------------------------------------------------------------- */
+@keyframes demo-cursor {
+  0% { left: 78%; top: 96%; }
+  12%, 16% { left: 30%; top: 79%; }
+  52%, 66% { left: 88%; top: 93%; }
+  80% { left: 70%; top: 40%; }
+  100% { left: 78%; top: 96%; }
+}
+@keyframes demo-click {
+  0%, 13%, 17%, 63%, 67%, 100% { transform: scale(1); }
+  15%, 65% { transform: scale(0.82); }
+}
+@keyframes demo-row {
+  0%, 15% { opacity: 0; transform: translateY(-6px); }
+  18%, 92% { opacity: 1; transform: none; }
+  98%, 100% { opacity: 0; }
+}
+@keyframes demo-type {
+  0%, 20% { width: 0; }
+  38%, 92% { width: 5ch; }
+  98%, 100% { width: 0; }
+}
+@keyframes demo-chip {
+  0%, 40% { opacity: 0; transform: scale(0.9); }
+  44%, 92% { opacity: 1; transform: none; }
+  98%, 100% { opacity: 0; }
+}
+@keyframes demo-press {
+  0%, 63%, 67%, 100% { filter: none; transform: none; }
+  65% { filter: brightness(0.85); transform: scale(0.96); }
+}
+@keyframes demo-toast {
+  0%, 66% { opacity: 0; transform: translateY(10px); }
+  70%, 90% { opacity: 1; transform: none; }
+  95%, 100% { opacity: 0; transform: translateY(10px); }
+}
+@keyframes demo-ripple {
+  0%, 14% { opacity: 0; transform: scale(0.2); }
+  15% { opacity: 0.8; transform: scale(0.4); }
+  22%, 64% { opacity: 0; transform: scale(1.6); }
+  65% { opacity: 0.8; transform: scale(0.4); }
+  72%, 100% { opacity: 0; transform: scale(1.6); }
+}
+.demo-cursor { animation: demo-cursor 10s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+.demo-cursor-icon { animation: demo-click 10s ease infinite; }
+.demo-ripple { animation: demo-ripple 10s ease-out infinite; }
+.demo-row { animation: demo-row 10s ease infinite; }
+.demo-type { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; animation: demo-type 10s steps(5) infinite; }
+.demo-chip { animation: demo-chip 10s ease infinite; }
+.demo-press { animation: demo-press 10s ease infinite; }
+.demo-toast { animation: demo-toast 10s var(--ease-out-soft) infinite; }
+
+/* Démo Clés API : régénération (boucle de 8 s). */
+@keyframes demo-revoke {
+  0%, 35% { opacity: 0; }
+  42%, 92% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes demo-strike {
+  0%, 35% { text-decoration-color: transparent; opacity: 1; }
+  42%, 92% { text-decoration-color: var(--nb-danger); opacity: 0.5; }
+  100% { text-decoration-color: transparent; opacity: 1; }
+}
+@keyframes demo-newkey {
+  0%, 45% { width: 0; }
+  70%, 92% { width: 22ch; }
+  100% { width: 0; }
+}
+.demo-revoke { animation: demo-revoke 8s ease infinite; }
+.demo-strike { text-decoration-line: line-through; animation: demo-strike 8s ease infinite; }
+.demo-newkey { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; animation: demo-newkey 8s steps(22) infinite; }
+
+/* Démo Règles d'accès : bascule de règles (boucle de 9 s). */
+@keyframes demo-swap-out { 0%, 30% { opacity: 1; } 36%, 90% { opacity: 0; } 96%, 100% { opacity: 1; } }
+@keyframes demo-swap-in { 0%, 30% { opacity: 0; transform: scale(0.92); } 36%, 90% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+.demo-swap-out { animation: demo-swap-out 9s ease infinite; }
+.demo-swap-in { animation: demo-swap-in 9s ease infinite; }
+.demo-swap-out.d2, .demo-swap-in.d2 { animation-delay: 1.2s; }
+.demo-swap-out.d3, .demo-swap-in.d3 { animation-delay: 2.4s; }
+
+/* Grille de pixels du bandeau final. */
+@keyframes nb-pixel {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.9; }
+}
+.pixel { animation: nb-pixel 4s ease-in-out infinite; opacity: 0.08; }
+.pixel:nth-child(3n) { animation-duration: 5.5s; }
+.pixel:nth-child(5n) { animation-duration: 3.2s; animation-delay: 1.1s; }
+.pixel:nth-child(7n) { animation-delay: 2.3s; }
+.pixel:nth-child(11n) { animation-duration: 6.4s; animation-delay: 0.6s; }
+.pixel:nth-child(13n) { animation-delay: 3.1s; }
+.pixel:nth-child(17n) { animation-duration: 2.7s; }
+
+/* Flottement doux. */
+@keyframes nb-float { 50% { transform: translateY(-6px); } }
+.float-soft { animation: nb-float 6s ease-in-out infinite; }
+
+/* Mouvement réduit : les éléments animés restent visibles dans leur état final lisible. */
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal] { opacity: 1; transform: none; }
+  .mail-toast:first-child, .log-line, .demo-row, .demo-chip, .demo-toast, .demo-swap-in { opacity: 1 !important; transform: none !important; }
+  .mail-toast:not(:first-child), .demo-swap-out, .demo-cursor, .demo-ripple { opacity: 0 !important; }
+  .demo-type { width: 5ch !important; }
+  .demo-newkey { width: 22ch !important; }
+  .marquee-x, .marquee-y, .marquee-y-reverse { animation: none !important; }
 }

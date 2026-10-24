@@ -9,3 +9,4 @@
 /coverage/
 /config/env.php
 !/storage/**/index.html
+/storage/mail/*

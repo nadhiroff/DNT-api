@@ -81,9 +81,10 @@ final class SessionAndCsrfTest extends TestCase
         $request = new Request(server: ['REQUEST_METHOD' => 'POST', 'HTTP_HOST' => 'nb.test']);
         try {
             $middleware->process($request, self::okHandler());
-            self::fail('419 attendu');
+            self::fail('403 attendu');
         } catch (HttpException $e) {
-            self::assertSame(419, $e->status());
+            self::assertSame(403, $e->status());
+            self::assertSame('csrf_token_mismatch', $e->errorCode());
         }
     }
 

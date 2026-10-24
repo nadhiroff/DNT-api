@@ -22,7 +22,7 @@ $pageTitle = isset($title) && $title !== '' ? $title . ' · ' . $appName : $appN
     <?php if (!empty($withCsrf)): ?>
     <meta name="csrf-token" content="<?= $this->csrfToken() ?>">
     <?php endif; ?>
-    <script nonce="<?= $this->nonce() ?>">try{var t=localStorage.getItem('nb-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}</script>
+    <script nonce="<?= $this->nonce() ?>">document.documentElement.classList.add('js');try{var t=localStorage.getItem('nb-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}</script>
     <link rel="preload" href="<?= $this->asset('fonts/ibm-plex-sans-latin.woff2', false) ?>" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="<?= $this->asset('css/app.css') ?>">
     <link rel="icon" href="<?= $this->asset('img/favicon.svg') ?>" type="image/svg+xml">
