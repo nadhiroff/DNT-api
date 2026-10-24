@@ -25,4 +25,11 @@ return [
     'log_level' => Env::string('LOG_LEVEL', 'info'),
     'log_retention_days' => Env::int('LOG_RETENTION_DAYS', 14),
     'trusted_proxies' => Env::list('TRUSTED_PROXIES'),
+    // Informations affichées dans les pages légales.
+    'legal' => [
+        'company' => Env::string('LEGAL_COMPANY', Env::string('APP_NAME', 'NovaBase')),
+        'address' => Env::string('LEGAL_ADDRESS'),
+        'email' => Env::string('LEGAL_EMAIL'),
+        'host' => Env::string('LEGAL_HOST'),
+    ],
 ];

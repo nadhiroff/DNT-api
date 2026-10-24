@@ -52,6 +52,16 @@ final class Database
     }
 
     /**
+     * Ferme la connexion (elle sera rouverte à la prochaine requête si une fabrique est disponible).
+     */
+    public function disconnect(): void
+    {
+        if ($this->connector !== null && $this->transactionDepth === 0) {
+            $this->pdo = null;
+        }
+    }
+
+    /**
      * @param array<int|string, mixed> $params
      *
      * @return list<array<string, mixed>>

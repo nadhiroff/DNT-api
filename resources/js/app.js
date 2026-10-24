@@ -1,10 +1,11 @@
-// NovaBase — comportements globaux (chargé en defer, compatible CSP stricte : aucun eval).
+// NovaBase — comportements globaux (chargé en defer, compatible CSP stricte : aucun eval, aucun gestionnaire inline).
 (() => {
   'use strict';
 
   const root = document.documentElement;
   const STORAGE_KEY = 'nb-theme';
 
+  /* ---------- Thème clair / sombre ---------- */
   const storedTheme = () => {
     try {
       return localStorage.getItem(STORAGE_KEY);
@@ -15,17 +16,14 @@
 
   const applyTheme = (theme) => {
     root.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0c0d0f' : '#fafaf9');
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
       button.setAttribute('aria-pressed', String(theme === 'light'));
       button.setAttribute('aria-label', theme === 'dark' ? 'Activer le thème clair' : 'Activer le thème sombre');
     });
   };
 
-  document.addEventListener('click', (event) => {
-    const toggle = event.target instanceof Element ? event.target.closest('[data-theme-toggle]') : null;
-    if (!toggle) {
-      return;
-    }
+  const toggleTheme = () => {
     const next = root.dataset.theme === 'dark' ? 'light' : 'dark';
     try {
       localStorage.setItem(STORAGE_KEY, next);
@@ -33,11 +31,193 @@
       // Stockage indisponible (navigation privée) : le choix vaut pour la page courante.
     }
     applyTheme(next);
+  };
+
+  /* ---------- Menu mobile ---------- */
+  const setMenu = (open) => {
+    const button = document.querySelector('[data-nav-toggle]');
+    const menu = button ? document.getElementById(button.getAttribute('aria-controls')) : null;
+    if (!button || !menu) {
+      return;
+    }
+    menu.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    button.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+    button.querySelector('[data-nav-icon-open]').hidden = open;
+    button.querySelector('[data-nav-icon-close]').hidden = !open;
+  };
+
+  /* ---------- Afficher / masquer un mot de passe ---------- */
+  const togglePassword = (button) => {
+    const input = document.getElementById(button.dataset.passwordToggle);
+    if (!input) {
+      return;
+    }
+    const visible = input.type === 'password';
+    input.type = visible ? 'text' : 'password';
+    button.setAttribute('aria-pressed', String(visible));
+    button.setAttribute('aria-label', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+    button.querySelector('[data-eye]').hidden = visible;
+    button.querySelector('[data-eye-off]').hidden = !visible;
+  };
+
+  /* ---------- Copier dans le presse-papiers ---------- */
+  const copy = async (button) => {
+    try {
+      await navigator.clipboard.writeText(button.dataset.copy);
+      const label = button.getAttribute('aria-label');
+      button.setAttribute('aria-label', 'Copié !');
+      button.classList.add('text-accent-text');
+      setTimeout(() => {
+        if (label) {
+          button.setAttribute('aria-label', label);
+        }
+        button.classList.remove('text-accent-text');
+      }, 1600);
+    } catch {
+      window.prompt('Copiez le texte :', button.dataset.copy);
+    }
+  };
+
+  /* ---------- Onglets accessibles ---------- */
+  const selectTab = (tab) => {
+    const container = tab.closest('[data-tabs]');
+    container.querySelectorAll('[data-tab]').forEach((t) => {
+      if (t.closest('[data-tabs]') !== container) {
+        return;
+      }
+      const selected = t === tab;
+      t.setAttribute('aria-selected', String(selected));
+      t.tabIndex = selected ? 0 : -1;
+    });
+    container.querySelectorAll('[data-panel]').forEach((panel) => {
+      if (panel.closest('[data-tabs]') === container) {
+        panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+      }
+    });
+    if (container.dataset.tabs) {
+      document.dispatchEvent(new CustomEvent('nb:tab', { detail: { group: container.dataset.tabs, label: tab.dataset.label ?? tab.textContent.trim() } }));
+    }
+  };
+
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) {
+      return;
+    }
+    if (target.closest('[data-theme-toggle]')) {
+      toggleTheme();
+      return;
+    }
+    const navToggle = target.closest('[data-nav-toggle]');
+    if (navToggle) {
+      setMenu(navToggle.getAttribute('aria-expanded') !== 'true');
+      return;
+    }
+    if (target.closest('[data-nav-close]')) {
+      setMenu(false);
+      return;
+    }
+    const passwordToggle = target.closest('[data-password-toggle]');
+    if (passwordToggle) {
+      togglePassword(passwordToggle);
+      return;
+    }
+    const copyButton = target.closest('[data-copy]');
+    if (copyButton) {
+      copy(copyButton);
+      return;
+    }
+    const tab = target.closest('[data-tab]');
+    if (tab) {
+      selectTab(tab);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setMenu(false);
+    }
+    const tab = event.target instanceof Element ? event.target.closest('[data-tab]') : null;
+    if (tab && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+      const tabs = [...tab.closest('[data-tabs]').querySelectorAll('[data-tab]')];
+      const next = tabs[(tabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+      selectTab(next);
+      next.focus();
+    }
+  });
+
+  window.matchMedia('(min-width: 768px)').addEventListener('change', (query) => {
+    if (query.matches) {
+      setMenu(false);
+    }
+  });
+
+  /* ---------- QR code 2FA (bibliothèque qrcode-generator, dessin sur canvas) ---------- */
+  const drawQr = () => {
+    document.querySelectorAll('canvas[data-qr]').forEach((canvas) => {
+      if (typeof window.qrcode !== 'function') {
+        return;
+      }
+      const qr = window.qrcode(0, 'M');
+      qr.addData(canvas.dataset.qr);
+      qr.make();
+      const count = qr.getModuleCount();
+      const ratio = window.devicePixelRatio || 1;
+      const size = canvas.clientWidth || 176;
+      canvas.width = size * ratio;
+      canvas.height = size * ratio;
+      const ctx = canvas.getContext('2d');
+      const cell = canvas.width / count;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#0c0d0f';
+      for (let row = 0; row < count; row += 1) {
+        for (let col = 0; col < count; col += 1) {
+          if (qr.isDark(row, col)) {
+            ctx.fillRect(Math.floor(col * cell), Math.floor(row * cell), Math.ceil(cell), Math.ceil(cell));
+          }
+        }
+      }
+    });
+  };
+
+  /* ---------- Apparition des sections au défilement ---------- */
+  const revealables = document.querySelectorAll('[data-reveal]');
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    revealables.forEach((el) => observer.observe(el));
+  } else {
+    revealables.forEach((el) => el.classList.add('is-visible'));
+  }
+
+  /* ---------- En-tête : ombre après défilement ---------- */
+  const header = document.querySelector('[data-site-header]');
+  if (header) {
+    const onScroll = () => header.classList.toggle('shadow-card', window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ---------- Titre lié aux onglets (« Utilisez NovaBase avec … ») ---------- */
+  document.addEventListener('nb:tab', (event) => {
+    const target = document.querySelector(`[data-tab-label-for="${event.detail.group}"]`);
+    if (target) {
+      target.textContent = event.detail.label;
+    }
   });
 
   applyTheme(storedTheme() ?? root.dataset.theme ?? 'dark');
+  window.addEventListener('load', drawQr);
 
-  // Jeton CSRF ajouté automatiquement aux requêtes fetch modifiantes de même origine.
+  /* ---------- Jeton CSRF ajouté aux requêtes fetch modifiantes de même origine ---------- */
   const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
   if (csrf) {
     const nativeFetch = window.fetch.bind(window);

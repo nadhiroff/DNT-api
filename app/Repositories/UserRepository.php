@@ -66,6 +66,47 @@ final class UserRepository
         );
     }
 
+    public function markEmailVerified(int $userId): void
+    {
+        $this->db->execute('UPDATE users SET email_verified_at = UTC_TIMESTAMP() WHERE id = ? AND email_verified_at IS NULL', [$userId]);
+    }
+
+    public function updatePassword(int $userId, string $hash): void
+    {
+        $this->db->execute('UPDATE users SET password_hash = ? WHERE id = ?', [$hash, $userId]);
+    }
+
+    public function updateName(int $userId, string $name): void
+    {
+        $this->db->execute('UPDATE users SET name = ? WHERE id = ?', [$name, $userId]);
+    }
+
+    public function recordLogin(int $userId, string $ip): void
+    {
+        $this->db->execute('UPDATE users SET last_login_at = UTC_TIMESTAMP(), last_login_ip = ? WHERE id = ?', [$ip, $userId]);
+    }
+
+    /**
+     * Active la 2FA (secret chiffré) et mémorise le pas TOTP de l'enrôlement.
+     */
+    public function enableTotp(int $userId, string $secretEnc, int $step): void
+    {
+        $this->db->execute(
+            'UPDATE users SET totp_secret_enc = ?, totp_enabled_at = UTC_TIMESTAMP(), totp_last_step = ? WHERE id = ?',
+            [$secretEnc, $step, $userId],
+        );
+    }
+
+    public function disableTotp(int $userId): void
+    {
+        $this->db->execute('UPDATE users SET totp_secret_enc = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = ?', [$userId]);
+    }
+
+    public function delete(int $userId): void
+    {
+        $this->db->execute('DELETE FROM users WHERE id = ?', [$userId]);
+    }
+
     /**
      * Mémorise le dernier pas TOTP accepté (anti-rejeu) ; refuse tout retour en arrière.
      */

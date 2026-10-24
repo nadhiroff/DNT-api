@@ -11,6 +11,7 @@
 $this->layout('layouts/base', ['title' => 'Erreur ' . $status]);
 $headline = match (true) {
     $status === 404 => 'Cette page n\'existe pas',
+    $status === 403 && str_contains($message, 'session a expiré') => 'Session expirée',
     $status === 403 => 'Accès refusé',
     $status === 419 => 'Session expirée',
     $status === 429 => 'Doucement !',

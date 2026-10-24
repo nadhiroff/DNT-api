@@ -8,4 +8,6 @@
 - Configuration : `config/env.php` (tableau PHP, pas de `.env` : l'hébergeur ne les accepte pas). Les fichiers de `config/` commencent par la garde `NOVABASE_ROOT`.
 - Installation possible en sous-dossier sans réécriture (Apache local `AllowOverride None`, `http://localhost/DNT-api/`) : générer toutes les URL via `UrlGenerator` / `$this->url()` / `$this->asset()`, jamais en dur.
 - MySQL local : compte `admin` (migrations/provisioning/tests), `novabase_app` (applicatif). Tests d'intégration : `NB_TEST_DB_USER=admin NB_TEST_DB_PASSWORD=Admin`.
+- Échec CSRF = 403 `csrf_token_mismatch` (pas 419 : Apache transforme les statuts non standard en 500).
+- Parcours HTTP testés dans `tests/Integration/AuthFlowTest.php` (session en mémoire, e-mails en fichiers) : y ajouter chaque nouveau parcours web.
 - Messages, commentaires et textes d'interface en français.

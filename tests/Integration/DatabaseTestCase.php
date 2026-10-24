@@ -71,6 +71,8 @@ abstract class DatabaseTestCase extends TestCase
         foreach ([
             'APP_ENV' => 'testing',
             'APP_KEY' => 'base64:' . base64_encode(random_bytes(32)),
+            'APP_URL' => 'http://nb.test',
+            'APP_URL_REWRITE' => 'true',
             'LOG_LEVEL' => 'critical',
             'DB_HOST' => (string) $c['host'],
             'DB_PORT' => (string) $c['port'],

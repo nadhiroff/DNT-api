@@ -39,7 +39,8 @@ final class Csrf implements MiddlewareInterface
                 $token = is_string($field) ? $field : null;
             }
             if (!$this->csrf->validate($token)) {
-                throw new HttpException(419, 'csrf_token_mismatch', 'Votre session a expiré. Rechargez la page puis réessayez.');
+                // 403 et non 419 : Apache convertit les statuts non standard en 500.
+                throw new HttpException(403, 'csrf_token_mismatch', 'Votre session a expiré. Rechargez la page puis réessayez.');
             }
         }
 

@@ -5,7 +5,9 @@ declare(strict_types=1);
 
 use App\Console\Commands\CreateSuperadminCommand;
 use App\Console\Commands\KeyGenerateCommand;
+use App\Console\Commands\MailTestCommand;
 use App\Console\Commands\MigrateCommand;
+use App\Console\Commands\WorkerCommand;
 use App\Core\Application;
 use App\Core\Console\Kernel;
 use App\Core\ErrorHandler;
@@ -24,6 +26,8 @@ $kernel = new Kernel($app, [
     MigrateCommand::class,
     CreateSuperadminCommand::class,
     KeyGenerateCommand::class,
+    WorkerCommand::class,
+    MailTestCommand::class,
 ]);
 
 /** @var list<string> $argv */

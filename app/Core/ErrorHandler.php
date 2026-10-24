@@ -7,6 +7,7 @@ namespace App\Core;
 use App\Core\Http\HttpException;
 use App\Core\Http\Request;
 use App\Core\Http\Response;
+use App\Core\Http\UrlGenerator;
 use App\Core\Log\Logger;
 use App\Core\Session\Session;
 use App\Core\Validation\ValidationException;
@@ -26,6 +27,9 @@ final class ErrorHandler
         private readonly bool $debug,
         private readonly ?View $view = null,
         private readonly ?Session $session = null,
+        private readonly ?UrlGenerator $urls = null,
+        /** @var (\Closure(string): bool)|null indique si une page GET existe pour ce chemin */
+        private readonly ?\Closure $hasPage = null,
     ) {
     }
 
@@ -109,7 +113,13 @@ final class ErrorHandler
             $this->session->flash('errors', $e->errors());
             $this->session->flash('old', $e->old());
         }
-        $back = self::sameOriginReferer($request) ?? $request->path();
+        // Sans Referer (masqué par le navigateur) : la page de même adresse si elle existe
+        // (« /login »), sinon la page parente (« /account/delete » → « /account »).
+        $fallback = $request->path();
+        while ($this->hasPage !== null && $fallback !== '/' && !($this->hasPage)($fallback)) {
+            $fallback = substr($fallback, 0, (int) strrpos($fallback, '/')) ?: '/';
+        }
+        $back = self::sameOriginReferer($request) ?? ($this->urls !== null ? $this->urls->to($fallback) : $fallback);
 
         return Response::redirect($back, 303);
     }
