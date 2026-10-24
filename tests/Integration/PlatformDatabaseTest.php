@@ -45,7 +45,7 @@ final class PlatformDatabaseTest extends DatabaseTestCase
         $plan = self::db()->selectOne("SELECT slug, JSON_EXTRACT(limits, '$.projects') AS projects, JSON_EXTRACT(limits, '$.db_storage_bytes') AS db FROM plans WHERE is_default = 1");
         self::assertNotNull($plan);
         self::assertSame('free', $plan['slug']);
-        self::assertSame('2', (string) $plan['projects']);
+        self::assertSame('5', (string) $plan['projects']);
         self::assertSame('524288000', (string) $plan['db']);
     }
 

@@ -29,6 +29,7 @@ use App\Services\AvatarService;
 use App\Services\Crypto;
 use App\Services\ServerMetrics;
 use App\Services\Mail\MailTransport;
+use App\Services\Mail\SmtpService;
 use App\Services\HealthService;
 use Closure;
 use Throwable;
@@ -212,7 +213,7 @@ final class Application
             $c->get(HealthRepository::class),
             $base . '/storage',
         ));
-        $c->singleton(MailTransport::class, static fn (): MailTransport => new MailTransport($config, $base . '/storage/mail'));
+        $c->singleton(MailTransport::class, static fn (Container $c): MailTransport => new MailTransport($config, $base . '/storage/mail', $c->get(SmtpService::class)));
         $c->singleton(DevMailController::class, static fn (Container $c): DevMailController => new DevMailController(
             $c->get(Responder::class),
             $config,

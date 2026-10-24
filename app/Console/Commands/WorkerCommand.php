@@ -9,6 +9,7 @@ use App\Core\Console\Input;
 use App\Core\Console\Output;
 use App\Core\Database\DatabaseManager;
 use App\Services\Queue\Worker;
+use App\Services\MaintenanceService;
 use App\Services\ServerMetrics;
 
 /**
@@ -22,6 +23,7 @@ final class WorkerCommand extends Command
         private readonly Worker $worker,
         private readonly DatabaseManager $databases,
         private readonly ServerMetrics $metrics,
+        private readonly MaintenanceService $maintenance,
     ) {
     }
 
@@ -65,10 +67,15 @@ final class WorkerCommand extends Command
         $output->info('Worker démarré sur : ' . implode(', ', $queues));
         $processed = 0;
         $lastMetrics = 0;
+        $lastMaintenance = 0;
         while (!$this->stop && $processed < $maxJobs && time() < $deadline) {
             if (time() - $lastMetrics >= 60) {
                 $this->metrics->collect();
                 $lastMetrics = time();
+            }
+            if (time() - $lastMaintenance >= 600) {
+                $this->maintenance->run();
+                $lastMaintenance = time();
             }
             $didWork = false;
             foreach ($queues as $queue) {

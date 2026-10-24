@@ -7,10 +7,16 @@ if (!defined('NOVABASE_ROOT')) {
     exit;
 }
 
+use App\Controllers\Api\DataApiController;
+use App\Controllers\Api\EmailApiController;
 use App\Controllers\Api\HealthController;
 use App\Controllers\Api\ProjectApiController;
 use App\Controllers\Web\AccountController;
 use App\Controllers\Web\Admin\AdminController;
+use App\Controllers\Web\Admin\EmailSettingsController;
+use App\Controllers\Web\ProjectEmailController;
+use App\Controllers\Web\SqlEditorController;
+use App\Controllers\Web\TableController;
 use App\Controllers\Web\Admin\InvitationController;
 use App\Controllers\Web\Admin\LoginLogController;
 use App\Controllers\Web\Admin\ProjectAdminController;
@@ -43,6 +49,15 @@ return static function (Router $router): void {
     // API REST des projets (sans session, authentification par clé).
     $router->group('/api/v1/{ref:[a-z0-9]{20}}', [ApiKeyAuth::class], static function (Router $api): void {
         $api->get('/', [ProjectApiController::class, 'info'], name: 'api.project');
+        $api->get('/openapi.json', [ProjectApiController::class, 'openapi'], name: 'api.openapi');
+        $api->get('/data/{table:[a-z][a-z0-9_]{0,62}}', [DataApiController::class, 'index']);
+        $api->post('/data/{table:[a-z][a-z0-9_]{0,62}}', [DataApiController::class, 'store']);
+        $api->get('/data/{table:[a-z][a-z0-9_]{0,62}}/{id:[A-Za-z0-9\-]{1,36}}', [DataApiController::class, 'show']);
+        $api->patch('/data/{table:[a-z][a-z0-9_]{0,62}}/{id:[A-Za-z0-9\-]{1,36}}', [DataApiController::class, 'update']);
+        $api->put('/data/{table:[a-z][a-z0-9_]{0,62}}/{id:[A-Za-z0-9\-]{1,36}}', [DataApiController::class, 'update']);
+        $api->delete('/data/{table:[a-z][a-z0-9_]{0,62}}/{id:[A-Za-z0-9\-]{1,36}}', [DataApiController::class, 'destroy']);
+        $api->post('/email/send', [EmailApiController::class, 'send']);
+        $api->get('/email/{id:\d+}', [EmailApiController::class, 'show']);
     });
 
     // Images stockées hors du web (sans session).
@@ -107,7 +122,8 @@ return static function (Router $router): void {
                     $console->post('/projects', [ProjectController::class, 'store']);
                     $console->group('/projects/{ref:[a-z0-9]{20}}', [], static function (Router $p): void {
                         $p->get('/', [ProjectController::class, 'show'], name: 'projects.show');
-                        $p->get('/database', [ProjectController::class, 'database'], name: 'projects.database');
+                        $p->get('/api', [ProjectController::class, 'api'], name: 'projects.api');
+                        $p->get('/openapi.json', [ProjectController::class, 'openapi']);
                         $p->post('/database/reveal', [ProjectController::class, 'revealPassword']);
                         $p->get('/keys', [ProjectController::class, 'keys'], name: 'projects.keys');
                         $p->post('/keys', [ProjectController::class, 'storeKey']);
@@ -115,7 +131,38 @@ return static function (Router $router): void {
                         $p->post('/keys/{key:\\d+}/revoke', [ProjectController::class, 'revokeKey']);
                         $p->get('/settings', [ProjectController::class, 'settings'], name: 'projects.settings');
                         $p->post('/settings', [ProjectController::class, 'rename']);
+                        $p->post('/settings/cors', [ProjectController::class, 'updateCors']);
                         $p->post('/delete', [ProjectController::class, 'destroy']);
+
+                        // E-mails du projet.
+                        $p->get('/emails', [ProjectEmailController::class, 'index'], name: 'projects.emails');
+                        $p->post('/emails/smtp', [ProjectEmailController::class, 'save']);
+                        $p->post('/emails/smtp/delete', [ProjectEmailController::class, 'remove']);
+                        $p->post('/emails/test', [ProjectEmailController::class, 'test']);
+
+                        // Éditeur SQL (requêtes exécutées avec l'utilisateur MySQL du projet).
+                        $p->get('/sql', [SqlEditorController::class, 'index'], name: 'projects.sql');
+                        $p->post('/sql', [SqlEditorController::class, 'run']);
+
+                        // Table Editor.
+                        $p->get('/tables', [TableController::class, 'index'], name: 'projects.tables');
+                        $p->get('/tables/new', [TableController::class, 'create']);
+                        $p->post('/tables', [TableController::class, 'store']);
+                        $p->group('/tables/{table:[a-z][a-z0-9_]{0,62}}', [], static function (Router $t): void {
+                            $t->get('/', [TableController::class, 'show']);
+                            $t->post('/columns', [TableController::class, 'addColumn']);
+                            $t->post('/columns/delete', [TableController::class, 'dropColumn']);
+                            $t->post('/rename', [TableController::class, 'rename']);
+                            $t->post('/delete', [TableController::class, 'destroy']);
+                            $t->post('/rules', [TableController::class, 'updateRules']);
+                            $t->get('/rows/new', [TableController::class, 'newRow']);
+                            $t->post('/rows', [TableController::class, 'storeRow']);
+                            $t->get('/rows/{id:[A-Za-z0-9\\-]{1,36}}', [TableController::class, 'editRow']);
+                            $t->post('/rows/{id:[A-Za-z0-9\\-]{1,36}}', [TableController::class, 'updateRow']);
+                            $t->post('/rows/{id:[A-Za-z0-9\\-]{1,36}}/delete', [TableController::class, 'deleteRow']);
+                            $t->get('/export.csv', [TableController::class, 'export']);
+                            $t->post('/import', [TableController::class, 'import']);
+                        });
                     });
 
                     // Administration de la plateforme : superadmin uniquement.
@@ -134,6 +181,13 @@ return static function (Router $router): void {
                         $admin->get('/logins', [LoginLogController::class, 'index'], name: 'admin.logins');
                         $admin->get('/logins/feed', [LoginLogController::class, 'feed'], name: 'admin.logins.feed');
                         $admin->get('/community', [AdminController::class, 'showCommunity'], name: 'admin.community');
+                        $admin->get('/emails', [EmailSettingsController::class, 'index'], name: 'admin.emails');
+                        $admin->post('/emails/smtp', [EmailSettingsController::class, 'save']);
+                        $admin->post('/emails/test', [EmailSettingsController::class, 'test']);
+                        $admin->get('/emails/templates/{key:[a-z\\-]{3,40}}', [EmailSettingsController::class, 'editTemplate']);
+                        $admin->post('/emails/templates/{key:[a-z\\-]{3,40}}', [EmailSettingsController::class, 'saveTemplate']);
+                        $admin->post('/emails/templates/{key:[a-z\\-]{3,40}}/reset', [EmailSettingsController::class, 'resetTemplate']);
+                        $admin->get('/emails/templates/{key:[a-z\\-]{3,40}}/preview', [EmailSettingsController::class, 'preview']);
                         $admin->post('/community', [AdminController::class, 'updateCommunity']);
                         $admin->get('/testimonials', [TestimonialController::class, 'index'], name: 'admin.testimonials');
                         $admin->get('/testimonials/new', [TestimonialController::class, 'create'], name: 'admin.testimonials.create');

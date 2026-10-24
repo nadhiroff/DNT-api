@@ -6,16 +6,19 @@ namespace App\Services\Mail;
 
 use App\Core\View\View;
 use App\Jobs\SendEmailJob;
+use App\Repositories\EmailTemplateRepository;
 use App\Services\Queue\Queue;
 
 /**
- * E-mails transactionnels de la plateforme : rendu des gabarits views/emails puis mise en file.
+ * E-mails transactionnels de la plateforme : modèle personnalisé (Administration → E-mails)
+ * s'il existe, sinon gabarit par défaut de views/emails ; puis mise en file.
  */
 final class PlatformMailer
 {
     public function __construct(
         private readonly View $view,
         private readonly Queue $queue,
+        private readonly EmailTemplateRepository $templates,
     ) {
     }
 
@@ -24,9 +27,42 @@ final class PlatformMailer
      */
     public function send(string $to, string $subject, string $template, array $data = []): void
     {
-        $html = $this->view->render('emails/' . $template, ['subject' => $subject] + $data);
+        $custom = isset(EmailTemplates::PLATFORM[$template]) ? $this->templates->get(null, $template) : null;
+        if ($custom !== null) {
+            $rendered = $this->renderCustom($custom, $data);
+            $subject = $rendered['subject'];
+            $html = $rendered['html'];
+        } else {
+            $html = $this->view->render('emails/' . $template, ['subject' => $subject] + $data);
+        }
         $message = new MailMessage($to, $subject, $html, self::toText($html));
         $this->queue->dispatch(SendEmailJob::class, $message->toArray(), 'mail');
+    }
+
+    /**
+     * Rendu d'un modèle personnalisé (aussi utilisé pour l'aperçu dans l'administration).
+     *
+     * @param array{subject: string, heading: string, body: string, button_label: string} $template
+     * @param array<string, mixed>                                                         $data
+     *
+     * @return array{subject: string, html: string}
+     */
+    public function renderCustom(array $template, array $data): array
+    {
+        $vars = EmailTemplates::variables($data);
+        $subject = trim((string) preg_replace('/[\r\n]+/', ' ', EmailTemplates::fill($template['subject'], $vars)));
+        $paragraphs = array_values(array_filter(array_map('trim', preg_split('/\n\s*\n/', EmailTemplates::fill($template['body'], $vars)) ?: []), static fn (string $p): bool => $p !== ''));
+
+        return [
+            'subject' => $subject !== '' ? mb_substr($subject, 0, 200) : 'NovaBase',
+            'html' => $this->view->render('emails/custom', [
+                'subject' => $subject,
+                'heading' => EmailTemplates::fill($template['heading'], $vars),
+                'paragraphs' => $paragraphs,
+                'buttonLabel' => EmailTemplates::fill($template['button_label'], $vars),
+                'url' => $vars['lien'],
+            ]),
+        ];
     }
 
     /**

@@ -427,6 +427,7 @@ final class ProjectDataService
                 1452 => new HttpException(422, 'foreign_key_violation', 'La ligne liée (clé étrangère) n\'existe pas.'),
                 1048, 1364 => new HttpException(422, 'validation_failed', 'Une colonne obligatoire est vide.'),
                 1406 => new HttpException(422, 'validation_failed', 'Valeur trop longue.'),
+                1264, 1265, 1292, 1366 => new HttpException(422, 'validation_failed', 'Valeur refusée par MySQL pour une colonne (hors limites ou non autorisée).'),
                 default => $e,
             };
         }
