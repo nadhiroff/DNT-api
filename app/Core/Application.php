@@ -20,11 +20,14 @@ use App\Core\Security\PasswordPolicy;
 use App\Core\Session\DatabaseSessionHandler;
 use App\Core\Session\Session;
 use App\Core\View\View;
+use App\Middleware\Cors;
 use App\Middleware\HandleErrors;
 use App\Middleware\SecurityHeaders;
 use App\Repositories\HealthRepository;
 use App\Controllers\Web\DevMailController;
+use App\Services\AvatarService;
 use App\Services\Crypto;
+use App\Services\ServerMetrics;
 use App\Services\Mail\MailTransport;
 use App\Services\HealthService;
 use Closure;
@@ -36,7 +39,7 @@ use Throwable;
 final class Application
 {
     /** Middlewares globaux, appliqués à toutes les requêtes (y compris 404). */
-    private const array GLOBAL_MIDDLEWARE = [SecurityHeaders::class, HandleErrors::class];
+    private const array GLOBAL_MIDDLEWARE = [SecurityHeaders::class, Cors::class, HandleErrors::class];
 
     private function __construct(
         private readonly string $basePath,
@@ -215,6 +218,8 @@ final class Application
             $config,
             $base . '/storage/mail',
         ));
+        $c->singleton(AvatarService::class, static fn (): AvatarService => new AvatarService($base . '/storage/uploads/avatars'));
+        $c->singleton(ServerMetrics::class, static fn (): ServerMetrics => new ServerMetrics($base, $base . '/storage/cache/server-metrics.json'));
         $c->instance(Container::class, $c);
         $c->singleton(Router::class, static function () use ($base): Router {
             $router = new Router();

@@ -14,7 +14,7 @@ $links = [
 $loggedIn = !empty($currentUser);
 ?>
 <header class="sticky top-0 z-40 border-b border-line/70 bg-bg/80 backdrop-blur-xl supports-[backdrop-filter]:bg-bg/65" data-site-header>
-    <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+    <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <?= $this->insert('components/logo') ?>
 
         <nav class="hidden items-center gap-1 md:flex" aria-label="Navigation principale">
@@ -41,7 +41,7 @@ $loggedIn = !empty($currentUser);
     </div>
 
     <div id="menu-mobile" class="border-t border-line md:hidden" hidden>
-        <nav class="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4" aria-label="Navigation mobile">
+        <nav class="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-4" aria-label="Navigation mobile">
             <?php foreach ($links as [$href, $label]): ?>
             <a href="<?= $this->url($href) ?>" class="rounded-lg px-3 py-3 text-base font-medium text-fg hover:bg-surface-2" data-nav-close><?= e($label) ?></a>
             <?php endforeach; ?>

@@ -6,6 +6,7 @@ declare(strict_types=1);
 use App\Console\Commands\CreateSuperadminCommand;
 use App\Console\Commands\KeyGenerateCommand;
 use App\Console\Commands\MailTestCommand;
+use App\Console\Commands\MetricsCollectCommand;
 use App\Console\Commands\MigrateCommand;
 use App\Console\Commands\WorkerCommand;
 use App\Core\Application;
@@ -28,6 +29,7 @@ $kernel = new Kernel($app, [
     KeyGenerateCommand::class,
     WorkerCommand::class,
     MailTestCommand::class,
+    MetricsCollectCommand::class,
 ]);
 
 /** @var list<string> $argv */

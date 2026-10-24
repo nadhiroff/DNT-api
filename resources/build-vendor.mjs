@@ -7,8 +7,11 @@ const copies = [
   ['node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2', 'public/assets/fonts/jetbrains-mono-latin.woff2'],
   ['node_modules/@alpinejs/csp/dist/cdn.min.js', 'public/assets/js/alpine-csp.min.js'],
   ['resources/js/app.js', 'public/assets/js/app.js'],
+  ['resources/js/charts.js', 'public/assets/js/charts.js'],
   // Génération du QR code 2FA côté navigateur (MIT) : le secret ne quitte jamais le serveur et la page.
   ['node_modules/qrcode-generator/qrcode.js', 'public/assets/js/qrcode.js'],
+  // Graphiques de la console (MIT), servis localement.
+  ['node_modules/chart.js/dist/chart.umd.min.js', 'public/assets/js/chart.umd.min.js'],
 ];
 
 mkdirSync('public/assets/fonts', { recursive: true });

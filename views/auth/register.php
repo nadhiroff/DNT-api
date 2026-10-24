@@ -10,8 +10,7 @@ $oldValue = static fn (string $key): string => is_string($old[$key] ?? null) ? $
 <div class="animate-fade-up">
     <h1 class="text-2xl font-semibold tracking-tight">Créez votre compte</h1>
     <p class="mt-1.5 text-sm text-muted">Gratuit, sans carte bancaire. Votre premier backend est à quelques clics.</p>
-
-    <div class="mt-5 space-y-3 empty:hidden"><?= $this->insert('components/alerts') ?></div>
+    <?= $this->insert('components/alerts') ?>
 
     <form method="post" action="<?= $this->url('/register') ?>" class="mt-6 space-y-4" novalidate>
         <?= $this->csrfField() ?>

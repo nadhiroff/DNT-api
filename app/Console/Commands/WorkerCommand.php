@@ -9,6 +9,7 @@ use App\Core\Console\Input;
 use App\Core\Console\Output;
 use App\Core\Database\DatabaseManager;
 use App\Services\Queue\Worker;
+use App\Services\ServerMetrics;
 
 /**
  * Worker de la file d'attente, à superviser par systemd ou Supervisor (redémarrage automatique).
@@ -20,6 +21,7 @@ final class WorkerCommand extends Command
     public function __construct(
         private readonly Worker $worker,
         private readonly DatabaseManager $databases,
+        private readonly ServerMetrics $metrics,
     ) {
     }
 
@@ -62,7 +64,12 @@ final class WorkerCommand extends Command
 
         $output->info('Worker démarré sur : ' . implode(', ', $queues));
         $processed = 0;
+        $lastMetrics = 0;
         while (!$this->stop && $processed < $maxJobs && time() < $deadline) {
+            if (time() - $lastMetrics >= 60) {
+                $this->metrics->collect();
+                $lastMetrics = time();
+            }
             $didWork = false;
             foreach ($queues as $queue) {
                 if ($this->worker->runNext($queue)) {

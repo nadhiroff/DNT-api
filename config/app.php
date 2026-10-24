@@ -25,6 +25,8 @@ return [
     'log_level' => Env::string('LOG_LEVEL', 'info'),
     'log_retention_days' => Env::int('LOG_RETENTION_DAYS', 14),
     'trusted_proxies' => Env::list('TRUSTED_PROXIES'),
+    // Localisation des IP dans le journal des connexions : none | ip-api
+    'geoip_provider' => Env::string('GEOIP_PROVIDER', 'none'),
     // Informations affichées dans les pages légales.
     'legal' => [
         'company' => Env::string('LEGAL_COMPANY', Env::string('APP_NAME', 'NovaBase')),

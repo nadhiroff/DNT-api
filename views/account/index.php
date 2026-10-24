@@ -10,22 +10,11 @@
  */
 $this->layout('layouts/app', ['title' => 'Mon compte']);
 $twoFactorOn = $user['totp_enabled_at'] !== null;
-$roles = ['superadmin' => 'Superadmin', 'admin' => 'Administrateur', 'user' => 'Utilisateur'];
+$roles = ['superadmin' => 'Superadmin', 'user' => 'Utilisateur'];
 ?>
-<div class="flex flex-col gap-1">
-    <h1 class="text-2xl font-semibold tracking-tight">Mon compte</h1>
-    <p class="text-sm text-muted">Profil, sécurité et sessions.</p>
-</div>
+<?= $this->insert('components/page-header', ['eyebrow' => 'Compte', 'heading' => 'Mon compte', 'subtitle' => 'Profil, mot de passe, double authentification, appareils connectés.']) ?>
 
-<div class="mt-8 grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
-    <nav class="hidden lg:block" aria-label="Sections du compte">
-        <ul class="sticky top-24 space-y-1 text-sm">
-            <?php foreach (['profil' => 'Profil', 'mot-de-passe' => 'Mot de passe', 'double-authentification' => 'Double authentification', 'sessions' => 'Sessions actives', 'suppression' => 'Supprimer le compte'] as $anchor => $label): ?>
-            <li><a href="#<?= e($anchor) ?>" class="block rounded-md px-3 py-2 text-muted hover:bg-surface-2 hover:text-fg"><?= e($label) ?></a></li>
-            <?php endforeach; ?>
-        </ul>
-    </nav>
-
+<div class="grid items-start gap-6 xl:grid-cols-2">
     <div class="space-y-6">
         <section id="profil" class="card scroll-mt-24 p-5 sm:p-6">
             <h2 class="font-semibold">Profil</h2>
@@ -51,6 +40,8 @@ $roles = ['superadmin' => 'Superadmin', 'admin' => 'Administrateur', 'user' => '
             </form>
         </section>
 
+    </div>
+    <div class="space-y-6">
         <section id="double-authentification" class="card scroll-mt-24 p-5 sm:p-6">
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -76,7 +67,7 @@ $roles = ['superadmin' => 'Superadmin', 'admin' => 'Administrateur', 'user' => '
                     <button type="submit" class="btn-secondary">Générer 10 nouveaux codes</button>
                 </form>
                 <?php if (!$twoFactorRequired): ?>
-                <form method="post" action="<?= $this->url('/account/2fa/disable') ?>" class="space-y-3 rounded-lg border border-danger/30 p-4" novalidate>
+                <form method="post" action="<?= $this->url('/account/2fa/disable') ?>" data-confirm="Votre compte ne sera plus protégé que par votre mot de passe." data-confirm-title="Désactiver la double authentification" data-confirm-ok="Désactiver" class="space-y-3 rounded-lg border border-danger/30 p-4" novalidate>
                     <?= $this->csrfField() ?>
                     <p class="text-sm font-medium">Désactiver la double authentification</p>
                     <?= $this->insert('components/field', ['name' => 'disable_password', 'label' => 'Mot de passe', 'type' => 'password', 'autocomplete' => 'current-password', 'required' => true]) ?>
@@ -96,7 +87,7 @@ $roles = ['superadmin' => 'Superadmin', 'admin' => 'Administrateur', 'user' => '
                     <p class="mt-1 text-sm text-muted">Appareils connectés à votre compte au cours des 2 dernières heures.</p>
                 </div>
                 <?php if (count($sessions) > 1): ?>
-                <form method="post" action="<?= $this->url('/account/sessions/revoke-others') ?>">
+                <form method="post" action="<?= $this->url('/account/sessions/revoke-others') ?>" data-confirm="Tous vos autres appareils seront déconnectés." data-confirm-title="Fermer les autres sessions" data-confirm-ok="Tout fermer">
                     <?= $this->csrfField() ?>
                     <button type="submit" class="btn-secondary">Fermer les autres sessions</button>
                 </form>
@@ -114,7 +105,7 @@ $roles = ['superadmin' => 'Superadmin', 'admin' => 'Administrateur', 'user' => '
                         <p class="truncate text-xs text-muted"><?= e($s['ip']) ?> · active <?= e(time_ago($s['last_activity'])) ?></p>
                     </div>
                     <?php if ($s['id'] !== $currentSessionId): ?>
-                    <form method="post" action="<?= $this->url('/account/sessions/' . $s['id'] . '/revoke') ?>">
+                    <form method="post" action="<?= $this->url('/account/sessions/' . $s['id'] . '/revoke') ?>" data-confirm="Cet appareil sera déconnecté immédiatement." data-confirm-title="Fermer la session" data-confirm-ok="Fermer la session">
                         <?= $this->csrfField() ?>
                         <button type="submit" class="btn-ghost text-danger">Fermer</button>
                     </form>
@@ -124,10 +115,12 @@ $roles = ['superadmin' => 'Superadmin', 'admin' => 'Administrateur', 'user' => '
             </ul>
         </section>
 
+    </div>
+    <div class="xl:col-span-2">
         <section id="suppression" class="card scroll-mt-24 border-danger/30 p-5 sm:p-6">
             <h2 class="font-semibold text-danger">Supprimer le compte</h2>
             <p class="mt-1 text-sm text-muted">Action définitive : votre compte et toutes ses données seront effacés.</p>
-            <form method="post" action="<?= $this->url('/account/delete') ?>" class="mt-5 grid gap-5 sm:grid-cols-2" novalidate>
+            <form method="post" action="<?= $this->url('/account/delete') ?>" class="mt-5 grid gap-5 sm:grid-cols-2" novalidate data-confirm="Votre compte et toutes ses données seront supprimés définitivement. Cette action est irréversible." data-confirm-title="Supprimer mon compte" data-confirm-ok="Oui, supprimer">
                 <?= $this->csrfField() ?>
                 <?= $this->insert('components/field', ['name' => 'delete_password', 'label' => 'Mot de passe', 'type' => 'password', 'autocomplete' => 'current-password', 'required' => true]) ?>
                 <?= $this->insert('components/field', ['name' => 'delete_confirm', 'label' => 'Tapez SUPPRIMER pour confirmer', 'autocomplete' => 'off', 'required' => true]) ?>

@@ -12,6 +12,7 @@ use App\Core\Http\Response;
 use App\Core\Session\Session;
 use App\Repositories\PlanRepository;
 use App\Repositories\UserRepository;
+use App\Services\CommunityService;
 
 /**
  * Pages publiques : accueil et pages légales.
@@ -30,6 +31,7 @@ final class PageController
         private readonly UserRepository $users,
         private readonly Session $session,
         private readonly Config $config,
+        private readonly CommunityService $community,
     ) {
     }
 
@@ -37,7 +39,14 @@ final class PageController
     {
         $this->attachUser($request);
 
-        return $this->responder->view($request, 'landing/home', ['plans' => $this->plans->publicPlans()]);
+        $user = $request->attribute('user');
+        $isSuperadmin = is_array($user) && ($user['role'] ?? null) === 'superadmin';
+
+        return $this->responder->view($request, 'landing/home', [
+            'plans' => $this->plans->publicPlans(),
+            'community' => $this->community->settings(),
+            'testimonials' => $this->community->forHomepage($isSuperadmin),
+        ]);
     }
 
     public function legal(Request $request): Response

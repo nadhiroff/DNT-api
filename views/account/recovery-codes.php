@@ -6,6 +6,7 @@
 $this->layout('layouts/app', ['title' => 'Codes de secours']);
 ?>
 <div class="mx-auto max-w-xl">
+    <?= $this->insert('components/page-header', ['back' => '/account', 'backLabel' => 'Retour à mon compte', 'heading' => 'Codes de secours']) ?>
     <span class="flex size-12 items-center justify-center rounded-xl bg-accent-soft text-accent-text"><?= $this->icon('key', 'size-6') ?></span>
     <h1 class="mt-6 text-2xl font-semibold tracking-tight">Vos codes de secours</h1>
     <p class="mt-2 text-sm text-muted">Chaque code permet une connexion si vous n'avez pas votre téléphone. <strong class="text-fg">Ils ne seront plus jamais affichés</strong> : conservez-les dans un gestionnaire de mots de passe.</p>

@@ -63,3 +63,50 @@ if (!function_exists('user_agent_label')) {
         return $os !== null ? $browser . ' sur ' . $os : $browser;
     }
 }
+
+if (!function_exists('format_bytes')) {
+    /**
+     * Taille lisible en français (« 1,5 Go »).
+     */
+    function format_bytes(int|float|null $bytes, int $decimals = 1): string
+    {
+        if ($bytes === null) {
+            return '—';
+        }
+        $units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+        $i = 0;
+        $value = (float) $bytes;
+        while ($value >= 1024 && $i < count($units) - 1) {
+            $value /= 1024;
+            ++$i;
+        }
+
+        return number_format($value, $i === 0 ? 0 : $decimals, ',', ' ') . ' ' . $units[$i];
+    }
+}
+
+if (!function_exists('format_number')) {
+    function format_number(int|float $value): string
+    {
+        return number_format($value, is_float($value) && floor($value) !== $value ? 1 : 0, ',', ' ');
+    }
+}
+
+if (!function_exists('format_datetime')) {
+    /**
+     * Date UTC de la base affichée dans le fuseau de l'application (« 24/10/2026 à 14:05 »).
+     */
+    function format_datetime(?string $utc, bool $withSeconds = false): string
+    {
+        if ($utc === null || $utc === '') {
+            return '—';
+        }
+        try {
+            $date = new DateTimeImmutable($utc, new DateTimeZone('UTC'));
+        } catch (Exception) {
+            return $utc;
+        }
+
+        return $date->setTimezone(new DateTimeZone(date_default_timezone_get()))->format($withSeconds ? 'd/m/Y à H:i:s' : 'd/m/Y à H:i');
+    }
+}

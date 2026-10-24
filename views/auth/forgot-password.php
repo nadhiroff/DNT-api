@@ -8,8 +8,7 @@ $this->layout('layouts/auth', ['title' => 'Mot de passe oublié']);
 <div class="animate-fade-up">
     <h1 class="text-2xl font-semibold tracking-tight">Mot de passe oublié</h1>
     <p class="mt-2 text-sm text-muted">Indiquez votre adresse : nous vous enverrons un lien pour choisir un nouveau mot de passe.</p>
-
-    <div class="mt-6 space-y-3 empty:hidden"><?= $this->insert('components/alerts') ?></div>
+    <?= $this->insert('components/alerts') ?>
 
     <form method="post" action="<?= $this->url('/forgot-password') ?>" class="mt-8 space-y-5" novalidate>
         <?= $this->csrfField() ?>

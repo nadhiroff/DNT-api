@@ -10,9 +10,12 @@ $this->layout('layouts/base', ['title' => $title ?? null, 'withCsrf' => true]);
 <div class="grid h-dvh overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
     <!-- La page tient dans l'écran ; seul ce panneau défile si la fenêtre est très petite. -->
     <div class="flex h-dvh flex-col overflow-y-auto px-4 py-5 sm:px-10">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-3">
             <?= $this->insert('components/logo') ?>
-            <?= $this->insert('components/theme-toggle') ?>
+            <div class="flex items-center gap-1">
+                <a href="<?= $this->url('/') ?>" class="btn-ghost min-h-10 px-3 text-sm"><span class="rotate-180"><?= $this->icon('arrow-right', 'size-4') ?></span>Accueil</a>
+                <?= $this->insert('components/theme-toggle') ?>
+            </div>
         </div>
         <main id="contenu" class="mx-auto flex w-full max-w-[440px] flex-1 flex-col justify-center py-6">
             <?= $this->section('content') ?>

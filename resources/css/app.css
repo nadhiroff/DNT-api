@@ -54,6 +54,9 @@
   --nb-warning: #a15c00;
   --nb-ring: #0b7a4b;
   --nb-shadow: 0 1px 2px rgb(16 24 20 / 0.06), 0 8px 24px -12px rgb(16 24 20 / 0.12);
+  /* Séries des graphiques : validées (luminosité, daltonisme, contraste) pour la surface claire. */
+  --nb-chart-1: #0f9f63;
+  --nb-chart-2: #3a6fe0;
   color-scheme: light;
 }
 
@@ -75,6 +78,9 @@
   --nb-warning: #fbbf24;
   --nb-ring: #3ecf8e;
   --nb-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -16px rgb(0 0 0 / 0.6);
+  /* Séries validées pour la surface sombre (#131518). */
+  --nb-chart-1: #25a56e;
+  --nb-chart-2: #5b8af0;
   color-scheme: dark;
 }
 
@@ -280,7 +286,7 @@
   0%, 70%, 100% { border-color: var(--nb-border); color: var(--nb-muted); background: transparent; }
   20%, 40% { border-color: rgb(62 207 142 / 0.6); color: var(--nb-accent-text); background: var(--nb-accent-soft); }
 }
-.storage-cell { animation: nb-cell 6s ease-in-out infinite; }
+.storage-cell { animation: nb-cell 6s ease-in-out infinite both; }
 .storage-cell:nth-child(1) { animation-delay: 0s; }
 .storage-cell:nth-child(2) { animation-delay: 0.4s; }
 .storage-cell:nth-child(3) { animation-delay: 0.8s; }
@@ -297,7 +303,7 @@
   8%, 30% { opacity: 1; transform: none; }
   38%, 100% { opacity: 0; transform: translateY(-14px) scale(0.97); }
 }
-.mail-toast { animation: nb-toast 9s var(--ease-out-soft) infinite; opacity: 0; }
+.mail-toast { animation: nb-toast 9s var(--ease-out-soft) infinite both; opacity: 0; }
 .mail-toast:nth-child(2) { animation-delay: 3s; }
 .mail-toast:nth-child(3) { animation-delay: 6s; }
 
@@ -318,7 +324,7 @@
   0% { transform: scale(0.6); opacity: 0.7; }
   100% { transform: scale(1.6); opacity: 0; }
 }
-.shield-ring { animation: nb-ring 3s ease-out infinite; }
+.shield-ring { animation: nb-ring 3s ease-out infinite both; }
 .shield-ring:nth-child(2) { animation-delay: 1s; }
 .shield-ring:nth-child(3) { animation-delay: 2s; }
 
@@ -327,7 +333,7 @@
   0% { opacity: 0; transform: translateX(-6px); }
   6%, 100% { opacity: 1; transform: none; }
 }
-.log-line { opacity: 0; animation: nb-log-line 12s linear infinite; }
+.log-line { opacity: 0; animation: nb-log-line 12s linear infinite both; }
 .log-line:nth-child(1) { animation-delay: 0s; }
 .log-line:nth-child(2) { animation-delay: 1.2s; }
 .log-line:nth-child(3) { animation-delay: 2.4s; }
@@ -414,8 +420,9 @@
 /* Démo Règles d'accès : bascule de règles (boucle de 9 s). */
 @keyframes demo-swap-out { 0%, 30% { opacity: 1; } 36%, 90% { opacity: 0; } 96%, 100% { opacity: 1; } }
 @keyframes demo-swap-in { 0%, 30% { opacity: 0; transform: scale(0.92); } 36%, 90% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
-.demo-swap-out { animation: demo-swap-out 9s ease infinite; }
-.demo-swap-in { animation: demo-swap-in 9s ease infinite; }
+/* « both » : pendant le délai initial, l'état de départ (Public visible, nouvelle règle cachée) s'applique. */
+.demo-swap-out { animation: demo-swap-out 9s ease infinite both; }
+.demo-swap-in { opacity: 0; animation: demo-swap-in 9s ease infinite both; }
 .demo-swap-out.d2, .demo-swap-in.d2 { animation-delay: 1.2s; }
 .demo-swap-out.d3, .demo-swap-in.d3 { animation-delay: 2.4s; }
 
@@ -445,3 +452,16 @@
   .demo-newkey { width: 22ch !important; }
   .marquee-x, .marquee-y, .marquee-y-reverse { animation: none !important; }
 }
+
+/* Notifications : barre de progression de 4 s (pause au survol). */
+@keyframes nb-toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.toast-progress { animation: nb-toast-progress 4s linear forwards; }
+[data-toast]:hover .toast-progress { animation-play-state: paused; }
+[data-toast].is-leaving { opacity: 0; transform: translateX(16px); transition: opacity 0.25s ease, transform 0.25s ease; }
+
+/* Fenêtre de confirmation. */
+dialog[open] { animation: fade-up 0.2s var(--ease-out-soft); }
+
+/* Jauges. */
+.meter { height: 0.5rem; border-radius: 999px; background: var(--nb-surface-2); overflow: hidden; }
+.meter > span { display: block; height: 100%; border-radius: 999px; transition: width 0.6s var(--ease-out-soft); }

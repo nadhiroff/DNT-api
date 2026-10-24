@@ -7,6 +7,8 @@
  * @var string                  $appUrl
  * @var list<array{name: string, slug: string, description: string, price: string, currency: string, interval: string, features: list<string>, is_default: bool, is_available: bool, is_featured: bool}> $plans
  * @var array<string, mixed>|null $currentUser
+ * @var array<string, string>     $community
+ * @var array{items: list<array{id: int, author_name: string, handle: string, platform: string, profile_url: string|null, avatar_file: string|null, content: string, is_published: bool, sort: int}>, preview: bool} $testimonials
  */
 $this->layout('layouts/site', ['title' => 'Construisez en un week-end, évoluez sans limite']);
 $loggedIn = !empty($currentUser);
@@ -38,7 +40,7 @@ $security = [
     ['shield', 'Isolation stricte', 'Chaque projet a sa propre base et son propre utilisateur MySQL.'],
     ['lock', 'Secrets chiffrés', 'Mots de passe SMTP, clés JWT et secrets 2FA chiffrés avec libsodium.'],
     ['key', 'Clés révocables', 'Clés hachées, affichées une seule fois, révoquées instantanément.'],
-    ['user', 'Double authentification', 'TOTP et codes de secours, obligatoire pour les administrateurs.'],
+    ['user', 'Double authentification', 'TOTP et codes de secours, obligatoire pour le superadmin.'],
     ['alert', 'Anti-brute-force', 'Blocage progressif par compte et par IP, limites de débit par clé.'],
     ['folder', 'Journal d\'audit immuable', 'Chaque action sensible est tracée, sans modification possible.'],
 ];
@@ -58,7 +60,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
     <div class="bg-grid pointer-events-none absolute inset-0 -z-10 opacity-60" aria-hidden="true"></div>
     <div class="pointer-events-none absolute top-[-18rem] left-[-10rem] -z-10 size-[44rem] rounded-full bg-accent/12 blur-3xl animate-glow" aria-hidden="true"></div>
 
-    <div class="mx-auto max-w-6xl px-4 pt-16 pb-12 sm:px-6 sm:pt-24 lg:pb-16">
+    <div class="mx-auto max-w-7xl px-4 pt-16 pb-12 sm:px-6 sm:pt-24 lg:pb-16">
         <div class="grid items-end gap-8 lg:grid-cols-[1.45fr_0.55fr] lg:gap-12">
             <h1 class="animate-fade-up text-[2.5rem] leading-[1.06] font-semibold tracking-tight text-balance sm:text-5xl lg:text-[3.3rem]">
                 Construisez en un week-end<br>
@@ -76,7 +78,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
     </div>
 
     <!-- ===================== GRILLE PRODUITS (BENTO) ===================== -->
-    <div id="produits" class="mx-auto max-w-6xl scroll-mt-20 px-4 pb-6 sm:px-6">
+    <div id="produits" class="mx-auto max-w-7xl scroll-mt-20 px-4 pb-6 sm:px-6">
         <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
 
             <!-- Base de données -->
@@ -200,7 +202,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
 
 <!-- ============================== FRAMEWORKS (DÉFILEMENT) ============================== -->
 <section class="border-y border-line bg-surface/40 py-10" aria-label="Technologies compatibles">
-    <p class="mx-auto max-w-6xl px-4 text-sm text-muted sm:px-6">Compatible avec toutes vos technologies</p>
+    <p class="mx-auto max-w-7xl px-4 text-sm text-muted sm:px-6">Compatible avec toutes vos technologies</p>
     <div class="marquee-pause mask-fade-x mt-6 overflow-hidden">
         <ul class="marquee-x flex w-max gap-3">
             <?php foreach ([...$frameworks, ...$frameworks] as $i => $tech): ?>
@@ -212,7 +214,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
 
 <!-- ============================== DÉMO CONSOLE (« VIDÉO ») ============================== -->
 <section id="demo" class="scroll-mt-20">
-    <div class="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
         <h2 class="section-title max-w-3xl" data-reveal>Restez productif et gérez votre application <span class="text-muted">sans quitter la console</span></h2>
 
         <div data-tabs class="mt-10" data-reveal>
@@ -338,7 +340,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
 
 <!-- ============================== FRAMEWORKS + CODE ============================== -->
 <section id="api" class="scroll-mt-20 border-y border-line bg-surface/40">
-    <div class="mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[0.85fr_1.15fr]" data-tabs="framework">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[0.85fr_1.15fr]" data-tabs="framework">
         <div data-reveal>
             <h2 class="section-title"><span class="text-muted">Utilisez <?= e($appName) ?> avec</span><br><span data-tab-label-for="framework">Flutter</span></h2>
             <p class="mt-5 max-w-md text-muted">Une API REST standard : aucun SDK obligatoire. Filtres <code class="rounded bg-surface-2 px-1.5 py-0.5 text-sm text-fg">eq</code>, <code class="rounded bg-surface-2 px-1.5 py-0.5 text-sm text-fg">gte</code>, <code class="rounded bg-surface-2 px-1.5 py-0.5 text-sm text-fg">in</code>, tri, pagination et sélection de colonnes directement dans l'URL.</p>
@@ -366,7 +368,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
 
 <!-- ============================== CAS D'USAGE ============================== -->
 <section id="fonctionnement" class="scroll-mt-20">
-    <div class="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
         <div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
             <h2 class="section-title max-w-2xl" data-reveal><span class="text-muted">Lancez votre prochain projet</span><br>en trois étapes</h2>
             <a href="<?= $this->url($startPath) ?>" class="link shrink-0 text-sm" data-reveal><?= e($loggedIn ? 'Ouvrir la console' : 'Créer un compte gratuit') ?> →</a>
@@ -379,7 +381,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
                 ['03', 'Appelez l\'API', 'Lisez et écrivez vos données depuis votre app web ou mobile, immédiatement.', 'api'],
             ] as $i => [$num, $title, $text, $icon]): ?>
             <article class="card relative overflow-hidden p-6" data-reveal data-reveal-delay="<?= e($i) ?>">
-                <span class="pointer-events-none absolute -top-6 -right-2 font-mono text-8xl font-bold text-line/60" aria-hidden="true"><?= e($num) ?></span>
+                <span class="absolute top-5 right-5 font-mono text-sm font-semibold text-muted" aria-hidden="true"><span class="text-accent-text">/</span><?= e($num) ?></span>
                 <span class="relative flex size-10 items-center justify-center rounded-lg border border-line bg-surface-2 text-accent-text"><?= $this->icon($icon) ?></span>
                 <h3 class="relative mt-5 font-semibold"><?= e($title) ?></h3>
                 <p class="relative mt-2 text-sm text-muted"><?= e($text) ?></p>
@@ -402,7 +404,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
 
 <!-- ============================== SÉCURITÉ ============================== -->
 <section class="border-y border-line bg-surface/40">
-    <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-2">
+    <div class="mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-2">
         <div>
             <p class="eyebrow" data-reveal>Sécurité</p>
             <h2 class="section-title mt-3" data-reveal>Une sécurité de niveau production, <span class="text-muted">par défaut</span></h2>
@@ -437,9 +439,38 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
     </div>
 </section>
 
+<!-- ============================== COMMUNAUTÉ ============================== -->
+<?php if ($testimonials['items'] !== []): ?>
+<section id="communaute" class="scroll-mt-20 overflow-hidden">
+    <div class="mx-auto max-w-7xl px-4 pt-20 text-center sm:px-6 sm:pt-28" data-reveal>
+        <h2 class="section-title"><?= e($community['community_title'] !== '' ? $community['community_title'] : 'Rejoignez la communauté') ?></h2>
+        <?php if ($community['community_subtitle'] !== ''): ?>
+        <p class="mx-auto mt-4 max-w-2xl text-muted"><?= e($community['community_subtitle']) ?></p>
+        <?php endif; ?>
+        <?php if ($community['community_button_url'] !== ''): ?>
+        <a href="<?= e($community['community_button_url']) ?>" class="btn-secondary mt-7" target="_blank" rel="noopener"><?= e($community['community_button_label'] !== '' ? $community['community_button_label'] : 'Rejoindre la communauté') ?> <?= $this->icon('external', 'size-4') ?></a>
+        <?php endif; ?>
+        <?php if ($testimonials['preview']): ?>
+        <p class="mx-auto mt-6 flex max-w-xl items-center justify-center gap-2 rounded-lg border border-warning/40 bg-surface px-4 py-2.5 text-sm text-warning">
+            <?= $this->icon('info', 'size-4 shrink-0') ?>
+            <span>Aperçu superadmin : aucun témoignage publié, le public ne voit pas cette section. <a href="<?= $this->url('/admin/testimonials') ?>" class="link">Gérer les témoignages</a></span>
+        </p>
+        <?php endif; ?>
+    </div>
+    <div class="relative mx-auto mt-14 max-w-7xl px-4 sm:px-6">
+        <div class="max-h-[46rem] columns-1 gap-4 overflow-hidden sm:columns-2 lg:columns-3 xl:columns-4">
+            <?php foreach ($testimonials['items'] as $i => $t): ?>
+            <div class="break-inside-avoid" data-reveal data-reveal-delay="<?= e($i % 4) ?>"><?= $this->insert('components/testimonial-card', ['t' => $t, 'preview' => $testimonials['preview']]) ?></div>
+            <?php endforeach; ?>
+        </div>
+        <div class="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-bg via-bg/80 to-transparent" aria-hidden="true"></div>
+    </div>
+</section>
+<?php endif; ?>
+
 <!-- ============================== TARIFS ============================== -->
 <section id="tarifs" class="scroll-mt-20">
-    <div class="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28">
+    <div class="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
         <div class="mx-auto max-w-2xl text-center" data-reveal>
             <p class="eyebrow">Tarifs</p>
             <h2 class="section-title mt-3">Des offres pour chaque étape</h2>
@@ -477,7 +508,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
 
 <!-- ============================== FAQ ============================== -->
 <section id="faq" class="scroll-mt-20 border-t border-line">
-    <div class="mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[0.8fr_1.2fr]">
+    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[0.8fr_1.2fr]">
         <div data-reveal>
             <p class="eyebrow">FAQ</p>
             <h2 class="section-title mt-3">Questions fréquentes</h2>
@@ -505,7 +536,7 @@ $currencySymbol = static fn (string $c): string => $c === 'EUR' ? '€' : $c;
         <?php endfor; ?>
     </div>
     <div class="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-r from-bg via-bg/95 to-bg/40" aria-hidden="true"></div>
-    <div class="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32">
+    <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32">
         <div class="max-w-xl" data-reveal>
             <h2 class="section-title">Construisez en un week-end.<br><span class="text-accent-text">Évoluez sans limite.</span></h2>
             <p class="mt-5 text-muted">Open source et auto-hébergé : vos données restent chez vous. Créez votre compte en moins d'une minute.</p>

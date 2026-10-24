@@ -8,7 +8,17 @@ if (!defined('NOVABASE_ROOT')) {
 }
 
 use App\Controllers\Api\HealthController;
+use App\Controllers\Api\ProjectApiController;
 use App\Controllers\Web\AccountController;
+use App\Controllers\Web\Admin\AdminController;
+use App\Controllers\Web\Admin\InvitationController;
+use App\Controllers\Web\Admin\LoginLogController;
+use App\Controllers\Web\Admin\ProjectAdminController;
+use App\Controllers\Web\Admin\UserController;
+use App\Controllers\Web\InvitationAcceptController;
+use App\Controllers\Web\ProjectController;
+use App\Controllers\Web\Admin\TestimonialController;
+use App\Controllers\Web\MediaController;
 use App\Controllers\Web\AuthController;
 use App\Controllers\Web\ConsoleController;
 use App\Controllers\Web\DevMailController;
@@ -17,16 +27,26 @@ use App\Controllers\Web\PageController;
 use App\Controllers\Web\PasswordResetController;
 use App\Controllers\Web\RegisterController;
 use App\Core\Http\Router;
+use App\Middleware\ApiKeyAuth;
 use App\Middleware\Authenticate;
 use App\Middleware\Csrf;
 use App\Middleware\EnsureEmailVerified;
 use App\Middleware\EnsureTwoFactorEnrolled;
 use App\Middleware\RedirectIfAuthenticated;
+use App\Middleware\RequireSuperadmin;
 use App\Middleware\StartSession;
 
 return static function (Router $router): void {
     // Supervision (sans session, sans état).
     $router->get('/health', [HealthController::class, 'show'], name: 'health');
+
+    // API REST des projets (sans session, authentification par clé).
+    $router->group('/api/v1/{ref:[a-z0-9]{20}}', [ApiKeyAuth::class], static function (Router $api): void {
+        $api->get('/', [ProjectApiController::class, 'info'], name: 'api.project');
+    });
+
+    // Images stockées hors du web (sans session).
+    $router->get('/media/avatars/{file:[a-f0-9]{32}\.(?:webp|png)}', [MediaController::class, 'avatar'], name: 'media.avatar');
 
     // Espace web : sessions + CSRF.
     $router->group('/', [StartSession::class, Csrf::class], static function (Router $web): void {
@@ -49,6 +69,10 @@ return static function (Router $router): void {
             $guest->get('/reset-password/{token:[a-f0-9]{64}}', [PasswordResetController::class, 'showReset'], name: 'password.reset');
             $guest->post('/reset-password/{token:[a-f0-9]{64}}', [PasswordResetController::class, 'reset']);
         });
+
+        // Invitation d'un proche : accessible sans compte.
+        $web->get('/invitation/{token:[a-f0-9]{64}}', [InvitationAcceptController::class, 'show'], name: 'invitation');
+        $web->post('/invitation/{token:[a-f0-9]{64}}', [InvitationAcceptController::class, 'accept']);
 
         // Lien reçu par e-mail : valable connecté ou non.
         $web->get('/email/verify/{token:[a-f0-9]{64}}', [EmailVerificationController::class, 'verify'], name: 'verification.verify');
@@ -76,6 +100,49 @@ return static function (Router $router): void {
 
                 $secure->group('/', [EnsureEmailVerified::class], static function (Router $console): void {
                     $console->get('/console', [ConsoleController::class, 'dashboard'], name: 'console');
+
+                    // Projets (une base MySQL isolée chacun).
+                    $console->get('/projects', [ProjectController::class, 'index'], name: 'projects');
+                    $console->get('/projects/new', [ProjectController::class, 'create'], name: 'projects.create');
+                    $console->post('/projects', [ProjectController::class, 'store']);
+                    $console->group('/projects/{ref:[a-z0-9]{20}}', [], static function (Router $p): void {
+                        $p->get('/', [ProjectController::class, 'show'], name: 'projects.show');
+                        $p->get('/database', [ProjectController::class, 'database'], name: 'projects.database');
+                        $p->post('/database/reveal', [ProjectController::class, 'revealPassword']);
+                        $p->get('/keys', [ProjectController::class, 'keys'], name: 'projects.keys');
+                        $p->post('/keys', [ProjectController::class, 'storeKey']);
+                        $p->post('/keys/{key:\\d+}/regenerate', [ProjectController::class, 'regenerateKey']);
+                        $p->post('/keys/{key:\\d+}/revoke', [ProjectController::class, 'revokeKey']);
+                        $p->get('/settings', [ProjectController::class, 'settings'], name: 'projects.settings');
+                        $p->post('/settings', [ProjectController::class, 'rename']);
+                        $p->post('/delete', [ProjectController::class, 'destroy']);
+                    });
+
+                    // Administration de la plateforme : superadmin uniquement.
+                    $console->group('/admin', [RequireSuperadmin::class], static function (Router $admin): void {
+                        $admin->get('/', [AdminController::class, 'dashboard'], name: 'admin');
+                        $admin->get('/metrics', [AdminController::class, 'metrics'], name: 'admin.metrics');
+                        $admin->get('/users', [UserController::class, 'index'], name: 'admin.users');
+                        $admin->post('/users/{id:\\d+}/status', [UserController::class, 'updateStatus']);
+                        $admin->post('/users/{id:\\d+}/plan', [UserController::class, 'updatePlan']);
+                        $admin->get('/projects', [ProjectAdminController::class, 'index'], name: 'admin.projects');
+                        $admin->post('/projects/{ref:[a-z0-9]{20}}/suspend', [ProjectAdminController::class, 'toggleSuspend']);
+                        $admin->get('/invitations', [InvitationController::class, 'index'], name: 'admin.invitations');
+                        $admin->post('/invitations', [InvitationController::class, 'store']);
+                        $admin->post('/invitations/{id:\\d+}/resend', [InvitationController::class, 'resend']);
+                        $admin->post('/invitations/{id:\\d+}/revoke', [InvitationController::class, 'revoke']);
+                        $admin->get('/logins', [LoginLogController::class, 'index'], name: 'admin.logins');
+                        $admin->get('/logins/feed', [LoginLogController::class, 'feed'], name: 'admin.logins.feed');
+                        $admin->get('/community', [AdminController::class, 'showCommunity'], name: 'admin.community');
+                        $admin->post('/community', [AdminController::class, 'updateCommunity']);
+                        $admin->get('/testimonials', [TestimonialController::class, 'index'], name: 'admin.testimonials');
+                        $admin->get('/testimonials/new', [TestimonialController::class, 'create'], name: 'admin.testimonials.create');
+                        $admin->post('/testimonials', [TestimonialController::class, 'store']);
+                        $admin->get('/testimonials/{id:\d+}/edit', [TestimonialController::class, 'edit'], name: 'admin.testimonials.edit');
+                        $admin->post('/testimonials/{id:\d+}', [TestimonialController::class, 'update']);
+                        $admin->post('/testimonials/{id:\d+}/publish', [TestimonialController::class, 'togglePublish']);
+                        $admin->post('/testimonials/{id:\d+}/delete', [TestimonialController::class, 'delete']);
+                    });
                 });
             });
         });
