@@ -1,0 +1,37 @@
+# NovaBase — configuration Apache (mod_rewrite requis). La racine du VirtualHost doit être public/.
+Options -Indexes -MultiViews
+ServerSignature Off
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Signale à l'application que les URL propres (sans index.php) sont disponibles.
+    RewriteRule ^ - [E=NOVABASE_REWRITE:1]
+
+    # Transmet l'en-tête Authorization à PHP (JWT des utilisateurs finaux).
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Fichiers cachés (.git…) : jamais servis.
+    RewriteRule (^|/)\. - [F,L]
+
+    # Les assets existants sont servis directement, tout le reste passe par index.php.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Seul index.php peut être exécuté.
+<FilesMatch "\.(php|phar|phtml|php\d)$">
+    Require all denied
+</FilesMatch>
+<Files "index.php">
+    Require all granted
+</Files>
+
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    <FilesMatch "\.(css|js|woff2|svg|png|jpg|webp|avif|ico)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        Header set X-Content-Type-Options "nosniff"
+    </FilesMatch>
+</IfModule>

@@ -1,0 +1,10 @@
+parameters:
+    level: 8
+    paths:
+        - app
+        - config
+        - bin/console
+        - install.php
+        - tests
+    tmpDir: .phpstan-cache
+    treatPhpDocTypesAsCertain: false

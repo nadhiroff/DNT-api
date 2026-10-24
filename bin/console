@@ -1,0 +1,30 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use App\Console\Commands\CreateSuperadminCommand;
+use App\Console\Commands\KeyGenerateCommand;
+use App\Console\Commands\MigrateCommand;
+use App\Core\Application;
+use App\Core\Console\Kernel;
+use App\Core\ErrorHandler;
+
+if (PHP_SAPI !== 'cli') {
+    exit(1);
+}
+
+$basePath = dirname(__DIR__);
+require $basePath . '/vendor/autoload.php';
+
+$app = Application::create($basePath);
+$app->container()->get(ErrorHandler::class)->register();
+
+$kernel = new Kernel($app, [
+    MigrateCommand::class,
+    CreateSuperadminCommand::class,
+    KeyGenerateCommand::class,
+]);
+
+/** @var list<string> $argv */
+exit($kernel->handle($argv));

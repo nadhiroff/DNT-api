@@ -1,0 +1,20 @@
+# NovaBase — hébergement dont la racine web est le dossier du projet.
+# Recommandé : faire pointer la racine du site sur public/ ; ce fichier sert de repli.
+Options -Indexes -MultiViews
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Signale à l'application que les URL propres (sans index.php) sont disponibles.
+    RewriteRule ^ - [E=NOVABASE_REWRITE:1]
+
+    # Tout est servi depuis public/ : config/, storage/, vendor/, app/… deviennent inaccessibles.
+    RewriteCond %{REQUEST_URI} !/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Sans mod_rewrite : on bloque au minimum les dossiers et fichiers sensibles.
+<IfModule !mod_rewrite.c>
+    RedirectMatch 404 /(app|bin|config|database|deploy|docs|node_modules|resources|storage|tests|vendor)(/|$)
+    RedirectMatch 404 /(\.|composer\.|package|phpunit|phpstan|install\.php|CLAUDE\.md|README\.md)
+</IfModule>

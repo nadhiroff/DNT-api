@@ -1,0 +1,11 @@
+/vendor/
+/node_modules/
+/storage/logs/*
+/storage/cache/*
+/storage/uploads/*
+!/storage/**/.gitkeep
+/.phpunit.cache/
+/.phpstan-cache/
+/coverage/
+/config/env.php
+!/storage/**/index.html
