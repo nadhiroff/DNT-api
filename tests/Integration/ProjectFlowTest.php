@@ -38,14 +38,15 @@ final class ProjectFlowTest extends WebTestCase
     {
         $response = $this->send('POST', '/projects', ['name' => $name]);
         self::assertSame(303, $response->status(), $response->body());
-        self::assertMatchesRegularExpression('#^/projects/([a-z0-9]{20})/keys$#', (string) $response->header('location'));
+        self::assertMatchesRegularExpression('#^/projects/([a-z0-9]{20})$#', (string) $response->header('location'));
         $ref = substr((string) $response->header('location'), 10, 20);
         $this->refs[] = $ref;
         $page = $this->send('GET', '/projects/' . $ref . '/keys')->body();
         $pk = self::extract('/pk_live_[A-Za-z0-9\-_]{40,64}/', $page);
         $sk = self::extract('/sk_live_[A-Za-z0-9\-_]{40,64}/', $page);
-        // Affichées une seule fois.
-        self::assertStringNotContainsString($pk, $this->send('GET', '/projects/' . $ref . '/keys')->body());
+        // Toujours copiables (stockées chiffrées), aussi depuis la vue d'ensemble (.env).
+        self::assertStringContainsString($pk, $this->send('GET', '/projects/' . $ref . '/keys')->body());
+        self::assertStringContainsString('NOVABASE_KEY=' . $pk, html_entity_decode($this->send('GET', '/projects/' . $ref)->body()));
 
         return ['ref' => $ref, 'public' => $pk, 'secret' => $sk];
     }
@@ -109,7 +110,8 @@ final class ProjectFlowTest extends WebTestCase
         self::assertSame(5, (int) self::db()->scalar('SELECT SUM(requests) FROM api_usage_hourly u JOIN projects p ON p.id = u.project_id WHERE p.ref = ?', [$one['ref']]));
         self::assertStringContainsString('Boutique', $this->send('GET', '/console')->body());
 
-        // Quota du plan Gratuit : 2 projets maximum.
+        // Quota : surcharge individuelle à 2 projets (le plan Gratuit en autorise 5).
+        self::db()->execute("INSERT INTO user_limits (user_id, limit_key, value) SELECT id, 'projects', 2 FROM users WHERE email = 'owner@example.com'");
         $third = $this->send('POST', '/projects', ['name' => 'Troisième']);
         self::assertSame(303, $third->status());
         self::assertStringContainsString('limite de 2 projet', $this->send('GET', '/projects/new')->body());

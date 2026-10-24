@@ -24,6 +24,25 @@ final class UsageService
     }
 
     /**
+     * Espace de stockage restant (éditeur SQL : le quota de requêtes API ne s'applique pas).
+     *
+     * @param array{owner_id: int} $project
+     *
+     * @throws HttpException 402
+     */
+    public function assertStorageAvailable(array $project): void
+    {
+        $owner = $this->users->findById($project['owner_id']);
+        if ($owner === null) {
+            return;
+        }
+        $db = $this->quotas->limit($owner, 'db_storage_bytes');
+        if ($db !== null && $this->usage->dbBytesForOwner($owner['id']) >= $db) {
+            throw self::exceeded('db_storage', 'Espace de base de données de votre offre épuisé : supprimez des données ou changez d\'offre.');
+        }
+    }
+
+    /**
      * @param array{owner_id: int} $project
      *
      * @throws HttpException 402
@@ -34,10 +53,7 @@ final class UsageService
         if ($owner === null) {
             return;
         }
-        $db = $this->quotas->limit($owner, 'db_storage_bytes');
-        if ($db !== null && $this->usage->dbBytesForOwner($owner['id']) >= $db) {
-            throw self::exceeded('db_storage', 'Espace de base de données de votre offre épuisé : supprimez des données ou changez d\'offre.');
-        }
+        $this->assertStorageAvailable($project);
         $requests = $this->quotas->limit($owner, 'api_requests_month');
         if ($requests !== null && $this->usage->apiRequestsThisMonth($owner['id']) >= $requests) {
             throw self::exceeded('api_requests', 'Quota mensuel de requêtes API atteint.');

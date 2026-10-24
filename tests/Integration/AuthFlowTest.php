@@ -148,7 +148,7 @@ final class AuthFlowTest extends DatabaseTestCase
 
         $console = $this->send('GET', '/console');
         self::assertSame(200, $console->status());
-        self::assertStringContainsString('Bonjour Awa', $console->body());
+        self::assertMatchesRegularExpression('/(Bonjour|Bonsoir) Awa/', $console->body());
         self::assertRedirect($this->send('GET', '/login'), '/console');
 
         self::assertRedirect($this->send('POST', '/logout'), '/login');

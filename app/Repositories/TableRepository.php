@@ -87,6 +87,22 @@ final class TableRepository
         $this->insertColumn($this->db, $tableId, $column, $position);
     }
 
+    /**
+     * Remplace la clé et les colonnes d'une table (synchronisation depuis la structure MySQL réelle).
+     *
+     * @param list<ColumnDef> $columns
+     */
+    public function replaceStructure(int $tableId, string $pkType, array $columns): void
+    {
+        $this->db->transaction(function (Database $db) use ($tableId, $pkType, $columns): void {
+            $db->execute('UPDATE table_definitions SET pk_type = ? WHERE id = ?', [$pkType, $tableId]);
+            $db->execute('DELETE FROM column_definitions WHERE table_id = ?', [$tableId]);
+            foreach ($columns as $position => $column) {
+                $this->insertColumn($db, $tableId, $column, $position);
+            }
+        });
+    }
+
     public function dropColumn(int $tableId, string $name): void
     {
         $this->db->execute('DELETE FROM column_definitions WHERE table_id = ? AND name = ?', [$tableId, $name]);
@@ -149,6 +165,21 @@ final class TableRepository
             'error' => $r['error'] !== null ? (string) $r['error'] : null,
             'created_at' => (string) $r['created_at'],
         ], $this->db->select('SELECT action, sql_executed, status, error, created_at FROM schema_changes WHERE project_id = ? ORDER BY id DESC LIMIT ?', [$projectId, $limit]));
+    }
+
+    /**
+     * Dernières requêtes de l'éditeur SQL (instructions qui modifient la base).
+     *
+     * @return list<array{sql_executed: string, status: string, error: string|null, created_at: string}>
+     */
+    public function sqlHistory(int $projectId, int $limit = 15): array
+    {
+        return array_map(static fn (array $r): array => [
+            'sql_executed' => (string) $r['sql_executed'],
+            'status' => (string) $r['status'],
+            'error' => $r['error'] !== null ? (string) $r['error'] : null,
+            'created_at' => (string) $r['created_at'],
+        ], $this->db->select("SELECT sql_executed, status, error, created_at FROM schema_changes WHERE project_id = ? AND action = 'sql_editor' ORDER BY id DESC LIMIT ?", [$projectId, $limit]));
     }
 
     /**

@@ -4,7 +4,7 @@ Backend auto-hébergé et gratuit, inspiré de Supabase, écrit en **PHP 8.3+ na
 avec **MySQL 8** : base de données isolée par projet, API REST instantanée, authentification des
 utilisateurs finaux, stockage de fichiers et service d'e-mails.
 
-> **État : phases 1 à 4 livrées** (socle, comptes, site public, projets avec base MySQL isolée, clés API, console et administration). Ce README est complété à chaque phase ; la version finale
+> **État : phases 1 à 6 livrées + e-mails** : comptes, site public, projets à base MySQL isolée, Table Editor, éditeur SQL, API REST CRUD, clés API, e-mails (SMTP configurable, modèles, API d'envoi), console et administration. Ce README est complété à chaque phase ; la version finale
 > (worker, cron, Supervisor/systemd, sauvegardes, mises à jour) arrive en phase 11.
 
 ## Prérequis
@@ -123,9 +123,39 @@ dans `public/assets/js`) : aucun service externe ne voit le secret.
 ### Tâches planifiées (cron)
 
 ```cron
-* * * * * php /var/www/novabase/bin/console worker --once      # e-mails (si pas de worker permanent)
-* * * * * php /var/www/novabase/bin/console metrics:collect    # RAM / uptime pour le tableau de bord
+* * * * *    php /var/www/novabase/bin/console worker --once      # e-mails (si pas de worker permanent)
+* * * * *    php /var/www/novabase/bin/console metrics:collect    # RAM / uptime pour le tableau de bord
+*/10 * * * * php /var/www/novabase/bin/console maintenance        # quotas, purge clés révoquées > 30 j…
 ```
+
+Le worker permanent (`php bin/console worker`) fait aussi `metrics:collect` chaque minute et
+`maintenance` toutes les 10 minutes.
+
+### Utiliser un projet depuis une application
+
+Une application n'a besoin que de l'URL du projet et d'une clé (onglet « Vue d'ensemble » → bloc
+**Intégration**, `.env` prêt à copier) :
+
+```
+NOVABASE_URL=https://votre-domaine/api/v1/<ref>
+NOVABASE_KEY=pk_live_…           # applications mobiles / web (règles d'accès des tables)
+NOVABASE_SERVICE_KEY=sk_live_…   # serveurs uniquement (accès complet, e-mails)
+```
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| GET | `/data/<table>?col=op.valeur&order=col.desc&limit=20&offset=0&select=a,b` | Lister |
+| GET | `/data/<table>/<id>` | Lire |
+| POST | `/data/<table>` | Créer (objet ou tableau, 500 max) |
+| PATCH / PUT | `/data/<table>/<id>` | Modifier / remplacer |
+| DELETE | `/data/<table>/<id>` | Supprimer |
+| POST | `/email/send` | Envoyer un e-mail (clé secrète) |
+| GET | `/email/<id>` | Statut d'un e-mail |
+| GET | `/openapi.json` | Documentation OpenAPI 3.1 du projet |
+
+Opérateurs : `eq, neq, gt, gte, lt, lte, like, ilike, in, is`. Les clés restent copiables dans la
+console (stockées chiffrées) ; une clé régénérée ou révoquée est refusée immédiatement et reste
+affichée 30 jours dans l'historique.
 
 Le tableau de bord superadmin lit CPU, RAM, disque et uptime. Si le serveur web n'a pas accès à
 `/proc` (Apache/PHP-FPM durcis par systemd `ProtectProc`/`ProcSubset`, ou `open_basedir`), la RAM et
@@ -139,6 +169,13 @@ d'échec, les étapes déjà faites sont annulées. L'API d'un projet (`/api/v1/
 se connecte toujours avec cet utilisateur. Le journal des connexions peut localiser les IP via
 `GEOIP_PROVIDER=ip-api` (envoie les IP publiques à ip-api.com : à mentionner dans votre politique
 de confidentialité) ; `none` par défaut.
+
+**Éditeur SQL** (onglet du projet) : exécute des requêtes directement sur la base du projet, avec ce
+même utilisateur MySQL (impossible d'atteindre une autre base). Limites : 100 Ko et 50 instructions
+par exécution, 15 s par lecture, 500 lignes affichées ; `USE`, `LOCK`, transactions manuelles et
+`SLEEP` refusés. Après un `CREATE`, `ALTER`, `DROP` ou `RENAME`, l'API est resynchronisée : une table
+est exposée si sa clé primaire est une colonne `id` (`BIGINT UNSIGNED AUTO_INCREMENT` ou `CHAR(36)`),
+et les colonnes `owner_id`, `created_at`, `updated_at` sont ajoutées si elles manquent.
 
 Journaux : `storage/logs/app-AAAA-MM-JJ.log.php`, une ligne JSON par événement après une ligne de
 garde PHP (`tail -n +2 storage/logs/app-*.log.php`).

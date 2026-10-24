@@ -6,6 +6,9 @@ namespace App\Controllers\Api;
 
 use App\Core\Http\Request;
 use App\Core\Http\Response;
+use App\Core\Http\UrlGenerator;
+use App\Repositories\TableRepository;
+use App\Services\Data\OpenApiGenerator;
 use App\Services\Projects\ProjectProvisioner;
 
 /**
@@ -13,8 +16,19 @@ use App\Services\Projects\ProjectProvisioner;
  */
 final class ProjectApiController
 {
-    public function __construct(private readonly ProjectProvisioner $provisioner)
+    public function __construct(
+        private readonly ProjectProvisioner $provisioner,
+        private readonly TableRepository $tables,
+        private readonly UrlGenerator $urls,
+    ) {
+    }
+
+    public function openapi(Request $request): Response
     {
+        /** @var array{id: int, ref: string, name: string} $project */
+        $project = $request->attribute('project');
+
+        return Response::json(OpenApiGenerator::generate($project, $this->tables->forProject($project['id']), $this->urls->absolute('/api/v1/' . $project['ref'])));
     }
 
     public function info(Request $request): Response

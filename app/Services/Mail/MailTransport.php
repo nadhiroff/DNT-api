@@ -10,66 +10,70 @@ use PHPMailer\PHPMailer\PHPMailer;
 use RuntimeException;
 
 /**
- * Envoi effectif : SMTP (PHPMailer) ou « log » (fichiers dans storage/mail, pour le développement).
+ * Envoi effectif : SMTP (PHPMailer, configuration du projet → globale → config/env.php)
+ * ou « log » (fichiers dans storage/mail, pour le développement).
  */
 final class MailTransport
 {
     public function __construct(
         private readonly Config $config,
         private readonly string $mailDirectory,
+        private readonly ?SmtpService $smtp = null,
     ) {
     }
 
-    public function send(MailMessage $message): void
+    public function send(MailMessage $message, ?int $projectId = null): void
     {
-        match ($this->config->string('mail.driver', 'smtp')) {
-            'log' => $this->writeToFile($message),
-            default => $this->sendSmtp($message),
-        };
+        if ($this->config->string('mail.driver', 'smtp') === 'log') {
+            $this->writeToFile($message);
+
+            return;
+        }
+        $settings = $this->smtp?->resolve($projectId);
+        if ($settings === null) {
+            throw new RuntimeException('Aucun serveur SMTP configuré : renseignez-le dans Administration → E-mails.');
+        }
+        $this->sendSmtp($message, $settings);
     }
 
-    private function sendSmtp(MailMessage $message): void
+    /**
+     * @param array{host: string, port: int, encryption: string, username: string, password: string, from_email: string, from_name: string} $settings
+     */
+    private function sendSmtp(MailMessage $message, array $settings): void
     {
-        $host = $this->config->string('mail.host');
-        if ($host === '' || $this->config->string('mail.username') === '' && $this->config->string('mail.password') === '' && str_ends_with($host, 'gmail.com')) {
-            throw new RuntimeException('SMTP non configuré : renseignez MAIL_HOST, MAIL_USERNAME et MAIL_PASSWORD dans config/env.php.');
-        }
         $mailer = new PHPMailer(true);
         $mailer->isSMTP();
-        $mailer->Host = $host;
-        $mailer->Port = $this->config->int('mail.port', 587);
+        $mailer->Host = $settings['host'];
+        $mailer->Port = $settings['port'];
         $mailer->CharSet = PHPMailer::CHARSET_UTF8;
         $mailer->Timeout = 15;
-        $encryption = $this->config->string('mail.encryption', 'tls');
-        $mailer->SMTPSecure = match ($encryption) {
+        $mailer->SMTPSecure = match ($settings['encryption']) {
             'ssl' => PHPMailer::ENCRYPTION_SMTPS,
             'tls' => PHPMailer::ENCRYPTION_STARTTLS,
             default => '',
         };
-        $mailer->SMTPAutoTLS = $encryption !== 'none';
-        $username = $this->config->string('mail.username');
-        $password = $this->config->string('mail.password');
-        if (str_ends_with(strtolower($host), 'gmail.com')) {
-            // Les mots de passe d'application Google s'affichent par groupes de 4 : les espaces ne font pas partie du secret.
-            $password = str_replace(' ', '', $password);
-        }
-        if ($username !== '') {
+        $mailer->SMTPAutoTLS = $settings['encryption'] !== 'none';
+        if ($settings['username'] !== '') {
             $mailer->SMTPAuth = true;
-            $mailer->Username = $username;
-            $mailer->Password = $password;
+            $mailer->Username = $settings['username'];
+            $mailer->Password = $settings['password'];
         }
-        $from = $this->config->string('mail.from_address');
-        if ($from === '' && $username !== '') {
-            $from = $username;
+        $mailer->setFrom($settings['from_email'], $settings['from_name']);
+        foreach ($message->recipients() as $to) {
+            $mailer->addAddress($to);
         }
-        if ($from === '') {
-            throw new RuntimeException('Adresse d\'expéditeur manquante (MAIL_FROM_ADDRESS ou MAIL_USERNAME).');
+        foreach ($message->cc as $cc) {
+            $mailer->addCC($cc);
         }
-        $mailer->setFrom($from, $this->config->string('mail.from_name', 'NovaBase'));
-        $mailer->addAddress($message->to);
+        foreach ($message->bcc as $bcc) {
+            $mailer->addBCC($bcc);
+        }
+        foreach ($message->attachments as $file) {
+            $mailer->addStringAttachment((string) base64_decode($file['content'], true), $file['filename'], PHPMailer::ENCODING_BASE64, $file['type']);
+        }
         $mailer->Subject = $message->subject;
-        $mailer->isHTML(true);
-        $mailer->Body = $message->html;
+        $mailer->isHTML($message->html !== '');
+        $mailer->Body = $message->html !== '' ? $message->html : $message->text;
         $mailer->AltBody = $message->text;
         $mailer->send();
     }
@@ -82,7 +86,8 @@ final class MailTransport
         // Horodatage à la microseconde : l'ordre alphabétique des fichiers est l'ordre d'envoi.
         $now = \DateTimeImmutable::createFromFormat('U.u', sprintf('%.6F', microtime(true))) ?: new \DateTimeImmutable();
         $file = $this->mailDirectory . '/' . $now->format('Ymd-His-u') . bin2hex(random_bytes(2)) . '.mail.php';
-        $record = json_encode($message->toArray() + ['sent_at' => gmdate('c')], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $data = $message->toArray();
+        $record = json_encode(['to' => implode(', ', $data['to'])] + $data + ['sent_at' => gmdate('c')], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if (file_put_contents($file, Logger::GUARD . $record, LOCK_EX) === false) {
             throw new RuntimeException('Impossible d\'écrire le message dans ' . $this->mailDirectory);
         }

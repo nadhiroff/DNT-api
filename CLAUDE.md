@@ -15,4 +15,8 @@
 - Console : `layouts/app.php` (barre latérale, entrée active = plus long préfixe), en-têtes via `components/page-header` (bouton retour sur les pages de détail), toasts = `components/alerts`, confirmations = `data-confirm` sur le formulaire (jamais `alert/confirm/prompt`, testé).
 - Styles en ligne interdits (CSP) : largeur des jauges via `data-percent` ; graphiques Chart.js via `data-chart` + `resources/js/charts.js` (couleurs `--nb-chart-1/2` validées).
 - Projets : `ProjectProvisioner` (compte admin MySQL) ; DDL avec `Identifier::quote()` / `Identifier::literal()` uniquement. Tests de parcours : `tests/Integration/WebTestCase.php`.
+- Données des projets : `ProjectDataService` (CRUD, filtres en liste blanche), `DynamicTableService` (DDL avec l'utilisateur MySQL du projet, verrou par projet, `schema_changes`), `AccessPolicy` (règles par table). Identifiants utilisateur validés par `Identifier::problem()`.
+- Éditeur SQL (`/projects/{ref}/sql`) : `SqlEditorService` exécute avec l'utilisateur MySQL du projet (droits = sécurité), refuse USE/LOCK/transactions/SLEEP, puis `SchemaSync` aligne `table_definitions` sur la vraie structure (tables avec `id` AUTO_INCREMENT ou CHAR(36) ; ajoute owner_id/created_at/updated_at). Lire information_schema avec le nom de base explicite, jamais DATABASE().
+- E-mails : SMTP en base (`SmtpService`, global puis par projet, repli env.php), modèles plateforme dans `EmailTemplates` + table `email_templates`, API `POST /email/send` via `SendProjectEmailJob`.
+- Clés API : hash pour l'authentification + copie chiffrée (`key_enc`) pour la copie dans la console ; types `public`/`secret` uniquement, droits automatiques.
 - Messages, commentaires et textes d'interface en français.

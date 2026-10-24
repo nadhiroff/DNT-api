@@ -131,6 +131,34 @@
       togglePassword(passwordToggle);
       return;
     }
+    const preset = target.closest('[data-smtp-preset]');
+    if (preset) {
+      const form = preset.closest('[data-smtp-form]');
+      form.querySelector('[name="host"]').value = preset.dataset.host;
+      form.querySelector('[name="port"]').value = preset.dataset.port;
+      form.querySelector('[name="encryption"]').value = preset.dataset.encryption;
+      form.querySelector('[name="username"]')?.focus();
+      return;
+    }
+    const copyPanel = target.closest('[data-copy-panel]');
+    if (copyPanel) {
+      const visible = copyPanel.closest('[data-tabs]')?.querySelector('[data-panel]:not([hidden]) code');
+      if (visible) {
+        navigator.clipboard.writeText(visible.textContent ?? '').then(() => window.nbToast?.('success', 'Exemple copié.'));
+      }
+      return;
+    }
+    const reveal = target.closest('[data-reveal-secret]');
+    if (reveal) {
+      const code = document.getElementById(reveal.dataset.revealSecret);
+      if (code) {
+        const shown = reveal.getAttribute('aria-pressed') === 'true';
+        code.textContent = shown ? code.dataset.masked : code.dataset.secretValue;
+        reveal.setAttribute('aria-pressed', String(!shown));
+        reveal.setAttribute('aria-label', shown ? 'Afficher la valeur' : 'Masquer la valeur');
+      }
+      return;
+    }
     const copyButton = target.closest('[data-copy]');
     if (copyButton) {
       copy(copyButton);
@@ -178,10 +206,61 @@
     });
   }
 
+  /* ---------- Table Editor : lignes de colonnes dynamiques ---------- */
+  const syncColumnRow = (row) => {
+    const type = row.querySelector('[data-column-type]')?.value;
+    const fk = row.querySelector('[data-fk-fields]');
+    if (fk) {
+      fk.hidden = type !== 'foreign';
+    }
+    const length = row.querySelector('input[name$="[length]"]');
+    if (length) {
+      length.disabled = type !== 'string';
+    }
+  };
+  document.querySelectorAll('[data-column-row]').forEach(syncColumnRow);
+  document.addEventListener('change', (event) => {
+    const select = event.target instanceof HTMLSelectElement && event.target.matches('[data-column-type]') ? event.target : null;
+    if (select) {
+      syncColumnRow(select.closest('[data-column-row]'));
+    }
+  });
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const add = target?.closest('[data-column-add]');
+    if (add) {
+      const builder = add.closest('[data-column-builder]');
+      const template = builder?.querySelector('[data-column-template]');
+      const list = builder?.querySelector('[data-column-list]');
+      if (template && list) {
+        const index = Date.now();
+        const html = template.innerHTML.replaceAll('__i__', String(index));
+        const holder = document.createElement('div');
+        holder.innerHTML = html;
+        const node = holder.firstElementChild;
+        list.append(node);
+        node.querySelectorAll('[data-column-row]').forEach(syncColumnRow);
+        node.querySelector('input')?.focus();
+      }
+      return;
+    }
+    const remove = target?.closest('[data-column-remove]');
+    if (remove) {
+      const list = remove.closest('[data-column-list]');
+      if (list && list.children.length > 1) {
+        remove.closest('[data-column-list] > *')?.remove();
+      }
+    }
+  });
+
   /* ---------- Formulaires : envoi automatique et anti double-clic ---------- */
   document.addEventListener('change', (event) => {
     const select = event.target instanceof HTMLSelectElement ? event.target : null;
     select?.closest('form[data-autosubmit]')?.requestSubmit();
+    const file = event.target instanceof HTMLInputElement && event.target.matches('[data-autosubmit-file]') ? event.target : null;
+    if (file?.files?.length) {
+      file.form?.requestSubmit();
+    }
   });
   document.addEventListener('submit', (event) => {
     const form = event.target instanceof HTMLFormElement ? event.target : null;
@@ -331,6 +410,35 @@
   document.querySelectorAll('[data-percent]').forEach((bar) => {
     bar.style.width = `${Math.max(0, Math.min(100, Number(bar.dataset.percent) || 0))}%`;
   });
+
+  /* ---------- Éditeur SQL : modèles, Ctrl+Entrée, tabulation ---------- */
+  const sqlEditor = document.querySelector('[data-sql-editor]');
+  if (sqlEditor) {
+    const sqlForm = sqlEditor.closest('form');
+    document.querySelectorAll('[data-sql-snippet]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const snippet = button.dataset.sqlSnippet ?? '';
+        const current = sqlEditor.value.trimEnd();
+        sqlEditor.value = current === '' ? snippet : `${current}\n\n${snippet}`;
+        sqlEditor.focus();
+        sqlEditor.setSelectionRange(sqlEditor.value.length, sqlEditor.value.length);
+        sqlEditor.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      });
+    });
+    document.querySelector('[data-sql-clear]')?.addEventListener('click', () => {
+      sqlEditor.value = '';
+      sqlEditor.focus();
+    });
+    sqlEditor.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        sqlForm?.requestSubmit();
+      } else if (event.key === 'Tab' && !event.shiftKey) {
+        event.preventDefault();
+        sqlEditor.setRangeText('  ', sqlEditor.selectionStart, sqlEditor.selectionEnd, 'end');
+      }
+    });
+  }
 
   applyTheme(storedTheme() ?? root.dataset.theme ?? 'dark');
   window.addEventListener('load', drawQr);
