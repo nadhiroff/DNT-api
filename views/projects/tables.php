@@ -4,6 +4,7 @@
  * @var array{id: int, ref: string, name: string, db_name: string, db_user: string} $project
  * @var list<array{id: int, name: string, pk_type: string, access_rules: array{read: string, insert: string, update: string, delete: string}, created_at: string, columns: list<array{name: string}>}> $tables
  * @var array<string, array{name: string, rows: int, bytes: int, created_at: string|null}> $stats
+ * @var array<string, array{rows: list<array<string, mixed>>, total: int}|null> $previews
  * @var list<array{action: string, sql_executed: string, status: string, error: string|null, created_at: string}> $changes
  * @var string $dbHost
  * @var int    $dbPort
@@ -35,17 +36,50 @@ $rules = \App\Repositories\TableRepository::RULES;
 <?php else: ?>
 <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
     <?php foreach ($tables as $t): ?>
-    <?php $s = $stats[$t['name']] ?? null; ?>
-    <a href="<?= $this->url($base . '/tables/' . $t['name']) ?>" class="card group p-5 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-line-strong">
+    <?php
+        $s = $stats[$t['name']] ?? null;
+        $preview = $previews[$t['name']] ?? null;
+        // Deux premières colonnes de l'utilisateur pour résumer chaque ligne.
+        $labels = array_slice(array_column($t['columns'], 'name'), 0, 2);
+    ?>
+    <a href="<?= $this->url($base . '/tables/' . $t['name']) ?>" class="card group flex flex-col p-5 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-line-strong">
         <div class="flex items-center gap-3">
             <span class="flex size-10 items-center justify-center rounded-lg border border-line bg-surface-2 text-accent-text"><?= $this->icon('grid', 'size-5') ?></span>
-            <div class="min-w-0"><p class="truncate font-mono font-semibold group-hover:text-accent-text"><?= e($t['name']) ?></p><p class="text-xs text-muted"><?= e(count($t['columns']) + 4) ?> colonnes · clé <?= e($t['pk_type'] === 'uuid' ? 'UUID' : 'auto-incrément') ?></p></div>
+            <div class="min-w-0 flex-1"><p class="truncate font-mono font-semibold group-hover:text-accent-text"><?= e($t['name']) ?></p><p class="text-xs text-muted"><?= e(count($t['columns']) + 4) ?> colonnes · clé <?= e($t['pk_type'] === 'uuid' ? 'UUID' : 'auto-incrément') ?></p></div>
+            <span class="badge shrink-0 tabular-nums"><?= e(format_number($preview['total'] ?? ($s['rows'] ?? 0))) ?> ligne<?= e(($preview['total'] ?? 0) > 1 ? 's' : '') ?></span>
         </div>
-        <dl class="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4 text-xs">
-            <div><dt class="text-muted">Lignes (≈)</dt><dd class="mt-1 font-medium tabular-nums"><?= e(format_number($s['rows'] ?? 0)) ?></dd></div>
-            <div><dt class="text-muted">Taille</dt><dd class="mt-1 font-medium tabular-nums"><?= e(format_bytes($s['bytes'] ?? 0)) ?></dd></div>
-            <div><dt class="text-muted">Lecture</dt><dd class="mt-1 truncate font-medium"><?= e($rules[$t['access_rules']['read']] ?? '') ?></dd></div>
-        </dl>
+
+        <div class="mt-4 flex-1 rounded-lg border border-line bg-surface-2/40">
+            <p class="border-b border-line px-3 py-2 text-[11px] font-medium tracking-wide text-muted uppercase">Dernières lignes enregistrées</p>
+            <?php if ($preview === null): ?>
+            <p class="px-3 py-3 text-xs text-danger">Lecture impossible.</p>
+            <?php elseif ($preview['rows'] === []): ?>
+            <p class="px-3 py-3 text-xs text-muted">Aucune donnée pour l'instant.</p>
+            <?php else: ?>
+            <ul class="divide-y divide-line">
+                <?php foreach ($preview['rows'] as $row): ?>
+                <?php
+                    $summary = [];
+                    foreach ($labels as $label) {
+                        $v = $row[$label] ?? null;
+                        $summary[] = is_scalar($v) ? (string) $v : ($v === null ? '—' : (string) json_encode($v, JSON_UNESCAPED_UNICODE));
+                    }
+                    $when = is_string($row['updated_at'] ?? null) ? strtotime($row['updated_at'] . ' UTC') : false;
+                ?>
+                <li class="flex items-center gap-3 px-3 py-2 text-xs">
+                    <span class="w-8 shrink-0 font-mono text-muted">#<?= e(is_scalar($row['id'] ?? null) ? mb_substr((string) $row['id'], 0, 8) : '') ?></span>
+                    <span class="min-w-0 flex-1 truncate"><?= e(implode(' · ', $summary)) ?></span>
+                    <?php if ($when !== false): ?><span class="shrink-0 text-muted"><?= e(time_ago($when)) ?></span><?php endif; ?>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+            <?php endif; ?>
+        </div>
+
+        <div class="mt-4 flex items-center justify-between gap-3 text-xs">
+            <span class="text-muted"><?= e(format_bytes($s['bytes'] ?? 0)) ?> · lecture <?= e(mb_strtolower($rules[$t['access_rules']['read']] ?? '')) ?></span>
+            <span class="inline-flex items-center gap-1 font-medium text-accent-text">Voir toutes les données<?= $this->icon('arrow-right', 'size-3.5 transition-transform group-hover:translate-x-0.5') ?></span>
+        </div>
     </a>
     <?php endforeach; ?>
 </div>
