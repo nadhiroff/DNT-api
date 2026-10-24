@@ -31,6 +31,7 @@
       // Stockage indisponible (navigation privée) : le choix vaut pour la page courante.
     }
     applyTheme(next);
+    document.dispatchEvent(new CustomEvent('nb:theme', { detail: { theme: next } }));
   };
 
   /* ---------- Menu mobile ---------- */
@@ -67,6 +68,7 @@
       await navigator.clipboard.writeText(button.dataset.copy);
       const label = button.getAttribute('aria-label');
       button.setAttribute('aria-label', 'Copié !');
+      window.nbToast?.('success', 'Copié dans le presse-papiers.');
       button.classList.add('text-accent-text');
       setTimeout(() => {
         if (label) {
@@ -75,7 +77,7 @@
         button.classList.remove('text-accent-text');
       }, 1600);
     } catch {
-      window.prompt('Copiez le texte :', button.dataset.copy);
+      window.nbToast?.('error', 'Copie impossible : sélectionnez le texte manuellement.');
     }
   };
 
@@ -93,6 +95,12 @@
     container.querySelectorAll('[data-panel]').forEach((panel) => {
       if (panel.closest('[data-tabs]') === container) {
         panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+        // Les démonstrations repartent du début à chaque ouverture d'onglet.
+        if (!panel.hidden && typeof panel.getAnimations === 'function') {
+          panel.getAnimations({ subtree: true }).forEach((animation) => {
+            animation.currentTime = 0;
+          });
+        }
       }
     });
     if (container.dataset.tabs) {
@@ -134,9 +142,114 @@
     }
   });
 
+  /* ---------- Fenêtre de confirmation personnalisée (aucun confirm() natif) ---------- */
+  const dialog = document.getElementById('confirm-dialog');
+  let pendingForm = null;
+  document.addEventListener('submit', (event) => {
+    const form = event.target instanceof HTMLFormElement ? event.target : null;
+    if (!form?.dataset.confirm || form.dataset.confirmed === '1' || !(dialog instanceof HTMLDialogElement)) {
+      return;
+    }
+    event.preventDefault();
+    pendingForm = form;
+    dialog.querySelector('#confirm-title').textContent = form.dataset.confirmTitle ?? 'Confirmation';
+    dialog.querySelector('#confirm-message').textContent = form.dataset.confirm;
+    dialog.querySelector('[data-confirm-ok-btn]').textContent = form.dataset.confirmOk ?? 'Confirmer';
+    dialog.querySelector('[data-confirm-cancel-btn]').textContent = form.dataset.confirmCancel ?? 'Annuler';
+    dialog.showModal();
+    dialog.querySelector('[data-confirm-cancel-btn]').focus();
+  });
+  if (dialog instanceof HTMLDialogElement) {
+    dialog.querySelector('[data-confirm-ok-btn]').addEventListener('click', () => {
+      dialog.close();
+      if (pendingForm) {
+        pendingForm.dataset.confirmed = '1';
+        pendingForm.requestSubmit();
+      }
+    });
+    dialog.querySelector('[data-confirm-cancel-btn]').addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (event) => {
+      if (event.target === dialog) {
+        dialog.close();
+      }
+    });
+    dialog.addEventListener('close', () => {
+      pendingForm = null;
+    });
+  }
+
+  /* ---------- Formulaires : envoi automatique et anti double-clic ---------- */
+  document.addEventListener('change', (event) => {
+    const select = event.target instanceof HTMLSelectElement ? event.target : null;
+    select?.closest('form[data-autosubmit]')?.requestSubmit();
+  });
+  document.addEventListener('submit', (event) => {
+    const form = event.target instanceof HTMLFormElement ? event.target : null;
+    if (!form || event.defaultPrevented || !form.dataset.submitLoading) {
+      return;
+    }
+    const button = form.querySelector('button[type="submit"]');
+    if (button) {
+      button.disabled = true;
+      button.textContent = form.dataset.submitLoading;
+    }
+  });
+
+  /* ---------- Notifications : fermeture automatique après 4 s ---------- */
+  const dismissToast = (toast) => {
+    toast.classList.add('is-leaving');
+    setTimeout(() => toast.remove(), 260);
+  };
+  document.querySelectorAll('[data-toast]').forEach((toast) => {
+    const bar = toast.querySelector('.toast-progress');
+    bar?.addEventListener('animationend', () => dismissToast(toast));
+    toast.querySelector('[data-toast-close]')?.addEventListener('click', () => dismissToast(toast));
+  });
+  window.nbToast = (type, message) => {
+    const region = document.querySelector('[data-toast-region]');
+    if (!region) {
+      return;
+    }
+    const toast = document.createElement('div');
+    toast.className = 'pointer-events-auto relative w-full overflow-hidden rounded-xl border bg-surface shadow-card animate-fade-up ' + (type === 'error' ? 'border-danger/40' : 'border-accent/40');
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    const text = document.createElement('p');
+    text.className = 'p-4 pr-10 text-sm';
+    text.textContent = message;
+    const bar = document.createElement('span');
+    bar.className = 'toast-progress absolute bottom-0 left-0 h-0.5 w-full origin-left ' + (type === 'error' ? 'bg-danger' : 'bg-accent');
+    bar.addEventListener('animationend', () => dismissToast(toast));
+    toast.append(text, bar);
+    region.append(toast);
+  };
+
+  /* ---------- Barre latérale (tiroir sur mobile) ---------- */
+  const sidebar = document.querySelector('[data-sidebar]');
+  const backdrop = document.querySelector('[data-sidebar-backdrop]');
+  const setSidebar = (open) => {
+    if (!sidebar) {
+      return;
+    }
+    sidebar.dataset.open = String(open);
+    if (backdrop) {
+      backdrop.hidden = !open;
+    }
+    document.querySelector('[data-sidebar-open]')?.setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('overflow-hidden', open);
+  };
+  document.querySelector('[data-sidebar-open]')?.addEventListener('click', () => setSidebar(true));
+  document.querySelector('[data-sidebar-close]')?.addEventListener('click', () => setSidebar(false));
+  backdrop?.addEventListener('click', () => setSidebar(false));
+  window.matchMedia('(min-width: 1024px)').addEventListener('change', (query) => {
+    if (query.matches) {
+      setSidebar(false);
+    }
+  });
+
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       setMenu(false);
+      setSidebar(false);
     }
     const tab = event.target instanceof Element ? event.target.closest('[data-tab]') : null;
     if (tab && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
@@ -212,6 +325,11 @@
     if (target) {
       target.textContent = event.detail.label;
     }
+  });
+
+  // Largeur des jauges (attribut data-percent ; les styles en ligne sont interdits par la CSP).
+  document.querySelectorAll('[data-percent]').forEach((bar) => {
+    bar.style.width = `${Math.max(0, Math.min(100, Number(bar.dataset.percent) || 0))}%`;
   });
 
   applyTheme(storedTheme() ?? root.dataset.theme ?? 'dark');

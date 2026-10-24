@@ -35,7 +35,7 @@ $columns = [
 ];
 ?>
 <footer class="relative border-t border-line bg-surface/40">
-    <div class="mx-auto max-w-6xl px-4 pt-14 pb-10 sm:px-6">
+    <div class="mx-auto max-w-7xl px-4 pt-14 pb-10 sm:px-6">
         <div class="grid gap-10 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
             <div class="max-w-xs">
                 <?= $this->insert('components/logo') ?>

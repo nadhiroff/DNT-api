@@ -49,6 +49,11 @@ return [
     // Nombre de jours de journaux conservés par la tâche de nettoyage.
     'LOG_RETENTION_DAYS' => '14',
 
+    // --- Journal des connexions -----------------------------------------------
+    // Localisation des IP : none (aucune requête externe) | ip-api (service gratuit
+    // ip-api.com : les IP publiques des connexions lui sont envoyées, à déclarer RGPD).
+    'GEOIP_PROVIDER' => 'none',
+
     // --- Proxy inverse -----------------------------------------------------------
     // IP ou CIDR des proxys de confiance (séparés par des virgules) dont on accepte
     // X-Forwarded-For / X-Forwarded-Proto. Vide = aucun proxy (accès direct).

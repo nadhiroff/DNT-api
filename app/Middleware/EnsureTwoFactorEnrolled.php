@@ -12,7 +12,7 @@ use App\Core\Http\Response;
 use App\Services\Auth\TwoFactorService;
 
 /**
- * À placer après Authenticate : superadmin et admins doivent activer la 2FA avant tout accès.
+ * À placer après Authenticate : le superadmin doit activer la 2FA avant tout accès.
  */
 final class EnsureTwoFactorEnrolled implements MiddlewareInterface
 {

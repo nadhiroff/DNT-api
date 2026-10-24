@@ -10,4 +10,9 @@
 - MySQL local : compte `admin` (migrations/provisioning/tests), `novabase_app` (applicatif). Tests d'intégration : `NB_TEST_DB_USER=admin NB_TEST_DB_PASSWORD=Admin`.
 - Échec CSRF = 403 `csrf_token_mismatch` (pas 419 : Apache transforme les statuts non standard en 500).
 - Parcours HTTP testés dans `tests/Integration/AuthFlowTest.php` (session en mémoire, e-mails en fichiers) : y ajouter chaque nouveau parcours web.
+- Deux rôles seulement : `user` et `superadmin` (pas de rôle `admin`). Espace `/admin` protégé par `RequireSuperadmin` (404 pour les autres). 2FA obligatoire pour le superadmin.
+- Témoignages de la page d'accueil gérés en base (`testimonials`, `site_settings`) depuis `/admin` ; jamais de faux témoignages publiés (les exemples restent en brouillon).
+- Console : `layouts/app.php` (barre latérale, entrée active = plus long préfixe), en-têtes via `components/page-header` (bouton retour sur les pages de détail), toasts = `components/alerts`, confirmations = `data-confirm` sur le formulaire (jamais `alert/confirm/prompt`, testé).
+- Styles en ligne interdits (CSP) : largeur des jauges via `data-percent` ; graphiques Chart.js via `data-chart` + `resources/js/charts.js` (couleurs `--nb-chart-1/2` validées).
+- Projets : `ProjectProvisioner` (compte admin MySQL) ; DDL avec `Identifier::quote()` / `Identifier::literal()` uniquement. Tests de parcours : `tests/Integration/WebTestCase.php`.
 - Messages, commentaires et textes d'interface en français.

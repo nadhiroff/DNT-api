@@ -19,6 +19,8 @@ final class LoginResult
 
     public const string SUSPENDED = 'suspended';
 
+    public const string PENDING = 'pending';
+
     private function __construct(
         public readonly string $status,
         public readonly ?int $userId = null,
@@ -44,6 +46,11 @@ final class LoginResult
     public static function locked(int $retryAfter): self
     {
         return new self(self::LOCKED, null, $retryAfter);
+    }
+
+    public static function pending(): self
+    {
+        return new self(self::PENDING);
     }
 
     public static function suspended(): self

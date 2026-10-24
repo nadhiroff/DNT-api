@@ -83,4 +83,12 @@ final class ViewTest extends TestCase
         }
         self::assertGreaterThan(0, $count);
     }
+
+    public function testNoNativeBrowserDialogs(): void
+    {
+        foreach (['resources/js/app.js', 'resources/js/charts.js'] as $file) {
+            $js = (string) file_get_contents(dirname(__DIR__, 2) . '/' . $file);
+            self::assertDoesNotMatchRegularExpression('/(window\.)?\b(alert|confirm|prompt)\s*\(/', preg_replace('#//[^\n]*|/\*.*?\*/#s', '', $js) ?? '', $file);
+        }
+    }
 }

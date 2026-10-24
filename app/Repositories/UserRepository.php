@@ -66,6 +66,77 @@ final class UserRepository
         );
     }
 
+    /**
+     * Compte en attente pour une invitation : mot de passe inutilisable tant que l'invitation n'est pas acceptée.
+     */
+    public function createPending(string $email, ?int $planId): int
+    {
+        return $this->db->insert(
+            "INSERT INTO users (email, password_hash, name, role, plan_id, status) VALUES (?, ?, '', 'user', ?, 'pending')",
+            [mb_strtolower($email), '!invitation:' . bin2hex(random_bytes(16)), $planId],
+        );
+    }
+
+    /**
+     * Active un compte invité : nom, mot de passe, adresse vérifiée (le lien prouve l'accès à la boîte).
+     */
+    public function activateInvited(int $userId, string $name, string $passwordHash): void
+    {
+        $this->db->execute(
+            "UPDATE users SET name = ?, password_hash = ?, status = 'active', email_verified_at = UTC_TIMESTAMP() WHERE id = ? AND status = 'pending'",
+            [$name, $passwordHash, $userId],
+        );
+    }
+
+    public function setStatus(int $userId, string $status): void
+    {
+        $this->db->execute('UPDATE users SET status = ? WHERE id = ?', [$status, $userId]);
+    }
+
+    public function setPlan(int $userId, ?int $planId): void
+    {
+        $this->db->execute('UPDATE users SET plan_id = ? WHERE id = ?', [$planId, $userId]);
+    }
+
+    /**
+     * Liste paginée pour le panneau superadmin.
+     *
+     * @return list<array{id: int, email: string, name: string, role: string, status: string, plan_name: string|null, plan_id: int|null, projects: int, email_verified: bool, last_login_at: string|null, created_at: string}>
+     */
+    public function listForAdmin(string $search, string $status, int $limit, int $offset): array
+    {
+        $rows = $this->db->select(
+            "SELECT u.id, u.email, u.name, u.role, u.status, u.plan_id, pl.name AS plan_name, u.email_verified_at, u.last_login_at, u.created_at,
+                    (SELECT COUNT(*) FROM projects p WHERE p.owner_id = u.id AND p.status <> 'failed') AS projects
+             FROM users u LEFT JOIN plans pl ON pl.id = u.plan_id
+             WHERE (? = '' OR u.email LIKE ? OR u.name LIKE ?) AND (? = '' OR u.status = ?)
+             ORDER BY u.created_at DESC LIMIT ? OFFSET ?",
+            [$search, '%' . $search . '%', '%' . $search . '%', $status, $status, $limit, $offset],
+        );
+
+        return array_map(static fn (array $r): array => [
+            'id' => (int) $r['id'],
+            'email' => (string) $r['email'],
+            'name' => (string) $r['name'],
+            'role' => (string) $r['role'],
+            'status' => (string) $r['status'],
+            'plan_name' => $r['plan_name'] !== null ? (string) $r['plan_name'] : null,
+            'plan_id' => $r['plan_id'] !== null ? (int) $r['plan_id'] : null,
+            'projects' => (int) $r['projects'],
+            'email_verified' => $r['email_verified_at'] !== null,
+            'last_login_at' => $r['last_login_at'] !== null ? (string) $r['last_login_at'] : null,
+            'created_at' => (string) $r['created_at'],
+        ], $rows);
+    }
+
+    public function countForAdmin(string $search, string $status): int
+    {
+        return (int) $this->db->scalar(
+            "SELECT COUNT(*) FROM users u WHERE (? = '' OR u.email LIKE ? OR u.name LIKE ?) AND (? = '' OR u.status = ?)",
+            [$search, '%' . $search . '%', '%' . $search . '%', $status, $status],
+        );
+    }
+
     public function markEmailVerified(int $userId): void
     {
         $this->db->execute('UPDATE users SET email_verified_at = UTC_TIMESTAMP() WHERE id = ? AND email_verified_at IS NULL', [$userId]);

@@ -51,6 +51,14 @@ final class Container
         $this->instances[$id] = $value;
     }
 
+    /**
+     * Vrai si une instance a déjà été enregistrée ou construite (sans rien construire).
+     */
+    public function hasInstance(string $id): bool
+    {
+        return array_key_exists($id, $this->instances);
+    }
+
     public function has(string $id): bool
     {
         return isset($this->instances[$id]) || isset($this->factories[$id]) || class_exists($id);

@@ -16,6 +16,7 @@ use App\Repositories\PlanRepository;
 use App\Repositories\SessionRepository;
 use App\Repositories\UserRepository;
 use App\Services\AuditService;
+use App\Services\LoginEventService;
 use App\Services\Mail\PlatformMailer;
 
 /**
@@ -44,6 +45,7 @@ final class AuthService
         private readonly UrlGenerator $urls,
         private readonly Csrf $csrf,
         private readonly Config $config,
+        private readonly LoginEventService $loginEvents,
     ) {
     }
 
@@ -91,6 +93,8 @@ final class AuthService
     {
         $locked = $this->throttle->lockedFor($email, $ip);
         if ($locked > 0) {
+            $this->loginEvents->record('locked', null, $email, $ip);
+
             return LoginResult::locked($locked);
         }
         $user = $this->users->findByEmail($email);
@@ -100,10 +104,14 @@ final class AuthService
         if ($user === null || !$this->hasher->verify($password, $user['password_hash'])) {
             $this->throttle->failure($email, $ip);
             $this->audit->record('auth.login_failed', $user['id'] ?? null, $user !== null ? 'user:' . $user['id'] : null, $ip);
+            $this->loginEvents->record('login_failed', $user['id'] ?? null, $email, $ip);
 
             return LoginResult::invalid();
         }
         $this->throttle->success($email, $ip);
+        if ($user['status'] === 'pending') {
+            return LoginResult::pending();
+        }
         if ($user['status'] === 'suspended') {
             $this->audit->record('auth.login_suspended', $user['id'], 'user:' . $user['id'], $ip);
 
@@ -126,6 +134,7 @@ final class AuthService
         $this->csrf->rotate();
         $this->users->recordLogin($userId, $ip);
         $this->audit->record('auth.login', $userId, 'user:' . $userId, $ip);
+        $this->loginEvents->record('login', $userId, $this->users->findById($userId)['email'] ?? null, $ip);
     }
 
     public function beginTwoFactor(Session $session, int $userId): void
@@ -168,6 +177,7 @@ final class AuthService
         if (!$this->twoFactor->verify($user, $code)) {
             $this->throttle->failure($key, $ip);
             $this->audit->record('auth.2fa_failed', $user['id'], 'user:' . $user['id'], $ip);
+            $this->loginEvents->record('2fa_failed', $user['id'], $user['email'], $ip);
 
             return LoginResult::invalid();
         }
@@ -184,6 +194,7 @@ final class AuthService
         $this->csrf->rotate();
         if ($userId !== null) {
             $this->audit->record('auth.logout', $userId, 'user:' . $userId, $ip);
+            $this->loginEvents->record('logout', $userId, $this->users->findById($userId)['email'] ?? null, $ip);
         }
     }
 

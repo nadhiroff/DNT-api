@@ -39,6 +39,34 @@ final class PlanRepository
         return $plans;
     }
 
+    /**
+     * Limites d'un plan (clé absente ou valeur null = illimité).
+     *
+     * @return array<string, int|null>
+     */
+    public function limits(int $planId): array
+    {
+        $json = $this->db->scalar('SELECT limits FROM plans WHERE id = ?', [$planId]);
+        $limits = is_string($json) ? json_decode($json, true) : null;
+        if (!is_array($limits)) {
+            return [];
+        }
+        $result = [];
+        foreach ($limits as $key => $value) {
+            if (is_string($key)) {
+                $result[$key] = is_int($value) ? $value : null;
+            }
+        }
+
+        return $result;
+    }
+
+    /** @return list<array{id: int, name: string}> */
+    public function options(): array
+    {
+        return array_map(static fn (array $r): array => ['id' => (int) $r['id'], 'name' => (string) $r['name']], $this->db->select('SELECT id, name FROM plans ORDER BY sort, id'));
+    }
+
     public function defaultPlanId(): ?int
     {
         $id = $this->db->scalar('SELECT id FROM plans WHERE is_default = 1 ORDER BY sort, id LIMIT 1');

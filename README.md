@@ -4,7 +4,7 @@ Backend auto-hébergé et gratuit, inspiré de Supabase, écrit en **PHP 8.3+ na
 avec **MySQL 8** : base de données isolée par projet, API REST instantanée, authentification des
 utilisateurs finaux, stockage de fichiers et service d'e-mails.
 
-> **État : phases 1 (socle) et 2 (comptes) livrées, site public complet.** Ce README est complété à chaque phase ; la version finale
+> **État : phases 1 à 4 livrées** (socle, comptes, site public, projets avec base MySQL isolée, clés API, console et administration). Ce README est complété à chaque phase ; la version finale
 > (worker, cron, Supervisor/systemd, sauvegardes, mises à jour) arrive en phase 11.
 
 ## Prérequis
@@ -119,6 +119,26 @@ en cas d'échec ; `MAIL_DRIVER=log` enregistre les messages au lieu de les envoy
 
 Le QR code de la 2FA est dessiné dans le navigateur par `qrcode-generator` (MIT, ~50 Ko, compilé
 dans `public/assets/js`) : aucun service externe ne voit le secret.
+
+### Tâches planifiées (cron)
+
+```cron
+* * * * * php /var/www/novabase/bin/console worker --once      # e-mails (si pas de worker permanent)
+* * * * * php /var/www/novabase/bin/console metrics:collect    # RAM / uptime pour le tableau de bord
+```
+
+Le tableau de bord superadmin lit CPU, RAM, disque et uptime. Si le serveur web n'a pas accès à
+`/proc` (Apache/PHP-FPM durcis par systemd `ProtectProc`/`ProcSubset`, ou `open_basedir`), la RAM et
+l'uptime proviennent de `metrics:collect` (le worker l'exécute aussi chaque minute).
+
+### Projets et isolation
+
+Chaque projet crée une base `proj_<ref>` et un utilisateur MySQL `u_<ref>` n'ayant que
+`SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES` sur cette base ; en cas
+d'échec, les étapes déjà faites sont annulées. L'API d'un projet (`/api/v1/<ref>`, en-tête `apikey`)
+se connecte toujours avec cet utilisateur. Le journal des connexions peut localiser les IP via
+`GEOIP_PROVIDER=ip-api` (envoie les IP publiques à ip-api.com : à mentionner dans votre politique
+de confidentialité) ; `none` par défaut.
 
 Journaux : `storage/logs/app-AAAA-MM-JJ.log.php`, une ligne JSON par événement après une ligne de
 garde PHP (`tail -n +2 storage/logs/app-*.log.php`).

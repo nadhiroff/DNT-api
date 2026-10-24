@@ -123,10 +123,10 @@ final class TwoFactorService
     }
 
     /**
-     * La 2FA est obligatoire pour les rôles d'administration.
+     * La 2FA est obligatoire pour le superadmin (seul rôle d'administration).
      */
     public static function isRequiredFor(string $role): bool
     {
-        return in_array($role, ['superadmin', 'admin'], true);
+        return $role === 'superadmin';
     }
 }

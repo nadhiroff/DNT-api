@@ -31,5 +31,6 @@ $pageTitle = isset($title) && $title !== '' ? $title . ' · ' . $appName : $appN
 <body class="min-h-dvh">
     <a href="#contenu" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2">Aller au contenu</a>
     <?= $this->section('content') ?>
+    <?= $this->insert('components/confirm-dialog') ?>
 </body>
 </html>

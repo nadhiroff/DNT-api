@@ -7,14 +7,10 @@
  */
 $this->layout('layouts/app', ['title' => 'Activer la double authentification']);
 ?>
-<div class="mx-auto max-w-2xl">
-    <a href="<?= $this->url('/account') ?>" class="text-sm text-muted hover:text-fg">← Mon compte</a>
-    <h1 class="mt-3 text-2xl font-semibold tracking-tight">Activer la double authentification</h1>
-    <p class="mt-2 text-sm text-muted">
-        <?= e($required ? 'Obligatoire pour votre rôle. ' : '') ?>Utilisez une application comme Aegis, Google Authenticator, Microsoft Authenticator ou 1Password.
-    </p>
+<div class="mx-auto max-w-3xl">
+    <?= $this->insert('components/page-header', ['back' => '/account', 'backLabel' => 'Retour à mon compte', 'heading' => 'Activer la double authentification', 'subtitle' => ($required ? 'Obligatoire pour le superadmin. ' : '') . 'Utilisez une application comme Google Authenticator, Microsoft Authenticator, Aegis ou 1Password.']) ?>
 
-    <div class="card mt-8 divide-y divide-line">
+    <div class="card divide-y divide-line">
         <div class="grid gap-6 p-5 sm:grid-cols-[auto_minmax(0,1fr)] sm:p-6">
             <div class="mx-auto rounded-xl bg-white p-3 shadow-card sm:mx-0">
                 <canvas class="block size-44" width="176" height="176" data-qr="<?= e($uri) ?>" role="img" aria-label="QR code à scanner avec votre application d'authentification"></canvas>

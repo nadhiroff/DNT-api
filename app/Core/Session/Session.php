@@ -45,6 +45,12 @@ final class Session
     public function start(Request $request): void
     {
         if ($this->started) {
+            // Session en mémoire (tests) : chaque requête simulée fait tourner les messages flash,
+            // comme le ferait une nouvelle requête HTTP.
+            if (!$this->native) {
+                $this->boot();
+            }
+
             return;
         }
         if (session_status() === PHP_SESSION_ACTIVE) {

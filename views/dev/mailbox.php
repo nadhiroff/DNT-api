@@ -8,6 +8,7 @@
 $this->layout('layouts/site', ['title' => 'Boîte mail de développement']);
 ?>
 <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+    <a href="<?= $this->url('/') ?>" class="mb-6 inline-flex min-h-9 items-center gap-1.5 text-sm font-medium text-muted hover:text-fg"><span class="rotate-180"><?= $this->icon('arrow-right', 'size-4') ?></span>Retour</a>
     <span class="badge border-warning/40 text-warning">Développement uniquement</span>
     <h1 class="mt-4 text-2xl font-semibold tracking-tight">E-mails envoyés</h1>
     <p class="mt-2 text-sm text-muted">MAIL_DRIVER=log : les messages sont enregistrés dans storage/mail au lieu d'être envoyés.</p>

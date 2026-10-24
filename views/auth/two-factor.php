@@ -8,8 +8,7 @@ $this->layout('layouts/auth', ['title' => 'Double authentification']);
     <span class="flex size-12 items-center justify-center rounded-xl bg-accent-soft text-accent-text"><?= $this->icon('shield', 'size-6') ?></span>
     <h1 class="mt-6 text-2xl font-semibold tracking-tight">Double authentification</h1>
     <p class="mt-2 text-sm text-muted">Saisissez le code à 6 chiffres affiché par votre application d'authentification.</p>
-
-    <div class="mt-6 space-y-3 empty:hidden"><?= $this->insert('components/alerts') ?></div>
+    <?= $this->insert('components/alerts') ?>
 
     <form method="post" action="<?= $this->url('/login/2fa') ?>" class="mt-8 space-y-5" novalidate>
         <?= $this->csrfField() ?>

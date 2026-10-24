@@ -63,6 +63,8 @@ final class IpUtils
         // Plages non couvertes par les filtres natifs selon les versions de PHP.
         return self::inAny($ip, [
             '0.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8', '169.254.0.0/16', '192.0.0.0/24',
+            // Plages de documentation (RFC 5737), jamais routées sur Internet.
+            '192.0.2.0/24', '198.51.100.0/24', '203.0.113.0/24', '2001:db8::/32',
             '198.18.0.0/15', '224.0.0.0/4', '240.0.0.0/4',
             '::/128', '::1/128', '::ffff:0:0/96', 'fc00::/7', 'fe80::/10', 'ff00::/8', '64:ff9b::/96',
         ]);

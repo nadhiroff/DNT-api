@@ -45,6 +45,7 @@ final class AuthController
             LoginResult::TWO_FACTOR => $this->startTwoFactor((int) $result->userId),
             LoginResult::LOCKED => throw ValidationException::withMessage('email', self::lockedMessage($result->retryAfter), ['email' => $email]),
             LoginResult::SUSPENDED => throw ValidationException::withMessage('email', 'Ce compte est suspendu. Contactez le support.', ['email' => $email]),
+            LoginResult::PENDING => throw ValidationException::withMessage('email', 'Ce compte n\'est pas encore activé : acceptez l\'invitation reçue par e-mail.', ['email' => $email]),
             // Message identique que l'adresse existe ou non.
             default => throw ValidationException::withMessage('email', 'Adresse e-mail ou mot de passe incorrect.', ['email' => $email]),
         };
