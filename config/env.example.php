@@ -118,7 +118,7 @@ return [
     // tls | ssl | none
     'MAIL_ENCRYPTION' => 'tls',
     'MAIL_USERNAME' => 'noreplynotifyuserconnect@gmail.com',
-    'MAIL_PASSWORD' => '***REMOVED***',
+    'MAIL_PASSWORD' => '',
     'MAIL_FROM_ADDRESS' => 'noreplynotifyuserconnect@gmail.com',
     'MAIL_FROM_NAME' => 'NovaBase',
 ];
